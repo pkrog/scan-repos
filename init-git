@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+
+################################################################################
+
+function print_help {
+		echo -e "-m\tset message"
+		echo -e "-o\tset origin"
+		echo -e "-h\tprint this message"
+}
+
+################################################################################
+# GET ARGS
+
+# set default values
+msg="imported"
+git_repos_path=.
+
+# read options
+while getopts  "m:o:h" flag
+do
+		case $flag in
+				m ) msg=$OPTARG ;;
+				o ) origin=$OPTARG ;;
+				h ) print_help ; exit 0 ;;
+		esac
+done
+((nb_read_args=OPTIND - 1))
+shift $nb_read_args
+
+# read last argument
+if [ -n "$1" ] ; then
+		git_repos_path=$1
+fi
+
+# error if more than one argument is left
+if [ -n "$2" ] ; then
+		echo "You can't specify more than one repository !" >&2
+		print_help
+		exit 1
+fi
+
+################################################################################
+# SET ORIGIN
+
+function set_origin {
+
+    # check origin
+		if [ -z "$origin" ] ; then
+				echo "You must specify a remote git repository as origin !" >&2
+				print_help
+				exit 1
+		fi
+
+    # add origin
+		git remote add origin "$origin"
+
+    # push
+		git push origin master
+
+    # add origin as default
+		git config branch.master.remote origin
+		git config branch.master.merge refs/heads/master
+}
+
+################################################################################
+
+cd "$git_repos_path"
+
+# init directory as git
+git init
+
+# clean tree
+clean-git-repos
+
+# add files
+git add .
+
+# commit files
+git commit -a -m "$msg"
+
+# set origin
+if [ -n "$origin" ] ; then
+		set_origin
+fi

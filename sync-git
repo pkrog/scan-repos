@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+
+################################################################################
+# LOAD LIBRARY
+
+shell_lib=`get-shell-lib-config`
+source $shell_lib/process.sh
+
+################################################################################
+# GET ARGS
+
+# set default values
+message="did some modifications"
+git_repos_path=.
+quiet=false
+
+# read options
+while getopts  "qm:" flag
+do
+		case $flag in
+				q ) quiet=true ;;
+				m ) message=$OPTARG ;;
+		esac
+done
+((nb_read_args=OPTIND - 1))
+shift $nb_read_args
+
+# read last argument
+if [ -n "$1" ] ; then
+		git_repos_path=$1
+fi
+
+# error if more than one argument is left
+if [ -n "$2" ] ; then
+		echo "You can't specify more than one repository !" >&2
+		exit 1;
+fi
+
+################################################################################
+
+cd "$git_repos_path"
+
+# add untracked files
+echo
+echo Adding all untracked files...
+if ! git add . ; then
+		echo "Errorwhile adding new files to local repository !" >&2
+		exit 2
+fi
+
+# commit
+if ! run_and_grep "git status" "nothing to commit" ; then
+		echo
+		echo Commiting everything...
+		if ! git commit -a -m "$message" ; then
+				echo "Error while commiting changes to local repository !" >&2
+				exit 2
+		fi
+fi
+
+# integrate modifications from origin
+has_origin=`git config -l | grep remote.origin.url=`
+if [ -n "$has_origin" ] ; then
+		echo
+		echo Pulling from origin/master ...
+		if [ "$quiet" = "false" ] ; then # don't display error if pulling failed and in quiet mode, since it's certainly an assh issue.
+				if ! git pull origin master ; then
+						echo "Error while pulling from master !" >&2
+						exit 2
+				fi
+		else
+				if ! git pull origin master 2>/dev/null ; then
+						exit 0
+				fi
+		fi
+fi
+
+# merge current version into master
+has_master=`git config -l | grep branch.master.remote=`
+if [ -n "$has_master" ] ; then
+		echo
+		echo Pushing on master...
+		if ! git push origin master ; then
+				echo "Error while pushing to master !" >&2
+				exit 2				
+		fi
+fi

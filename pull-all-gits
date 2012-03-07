@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+################################################################################
+# GET ARGS
+
+dir=$1
+if [ -z "$dir" ] ; then
+		dir=.
+fi
+
+################################################################################
+CURDIR=`pwd`
+find "$dir" -type d -name .git | while read dir ; do 
+		echo -e "\nSYNC $dir\n"
+		d=`echo $dir | sed 's!/.git$!!'`
+		cd "$d" && git pull
+		cd $CURDIR
+done

@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+################################################################################
+# GET ARGS
+
+git_repos_path=$1
+if [ -z "$git_repos_path" ] ; then
+		git_repos_path=.
+fi
+
+################################################################################
+# RENAME CVS IGNORE FILES
+
+find "$git_repos_path" -name .cvsignore | while read file ; do new_file=`echo $file | sed 's/.cvsignore$/.gitignore/'` ; echo "Rename $file into $new_file" ; mv "$file" "$new_file" ; done
+
+################################################################################
+# REMOVE UNWANTED FILES
+
+FILES=".DS_Store *~ .*.swp"
+for file in $FILES ; do
+
+		# remove all files of this name
+		find "$git_repos_path" -name $file | while read file ; do echo "Remove $file" ; rm "$file" ; done
+
+    # update .gitignore
+    # check first that we are on the root of the repository
+		if [ -e "$git_repos_path/.git" ] ; then
+				gitignore="$git_repos_path/.gitignore"
+				add_file_to_ignore_list=yes
+
+				# check if file is already ignored
+				if [ -e "$gitignore" ] ; then
+						res=`grep $file $gitignore`
+						if [ -n "$res" ] ; then
+								add_file_to_ignore_list=
+						fi
+				fi
+
+        # add file to ignore list
+				if [ -n "$add_file_to_ignore_list" ] ; then
+						cat >>"$gitignore" <<EOF
+$file
+EOF
+				fi
+		fi
+done
