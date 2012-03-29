@@ -1,0 +1,7 @@
+# vi: ft=sh
+
+# To install, run :
+automake --add-missing
+autoreconf
+./configure
+make install
