@@ -1,7 +1,8 @@
 # vi: ft=sh
 
 # To install, run :
+aclocal
 automake --add-missing
-autoreconf
+autoconf
 ./configure
 make install
