@@ -3,8 +3,8 @@
 ################################################################################
 # LOAD LIBRARY
 
-shell_lib=`get-shell-lib-config`
-source $shell_lib/process.sh
+#shell_lib=`get-shell-lib-config`
+#source $shell_lib/process.sh
 
 ################################################################################
 # GET ARGS
