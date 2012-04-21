@@ -6,6 +6,18 @@
 #shell_lib=`get-shell-lib-config`
 #source $shell_lib/process.sh
 
+function run_and_grep {
+		cmd=$1
+		text=$2
+
+		output=$($cmd | grep "$text")
+		if [ -z "$output" ] ; then
+				return 1
+		fi
+
+		return 0
+}
+
 ################################################################################
 # GET ARGS
 
