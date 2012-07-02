@@ -76,7 +76,7 @@ if [ -n "$has_origin" ] ; then
 fi
 
 # merge current version into master
-has_master=`git config -l | grep branch.master.remote=`
+has_master=`git config -l | grep remote.origin.url=`
 if [ -n "$has_master" ] ; then
 		echo
 		echo Pushing on master...
