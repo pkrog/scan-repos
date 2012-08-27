@@ -21,11 +21,12 @@ fi
 
 ################################################################################
 
-find "$dir" -type d -name .git | while read dir ; do 
-		echo -e "\nSYNC $dir\n"
-		d=`echo $dir | sed 's!/.git$!!'`
-		if ! sync-git $quiet "$d" ; then
-				echo "Error while syncing local repository $d !" >&2
-				exit 2
+for repos in $dir/* ; do 
+        if [ -d "$repos/.git" ] ; then
+			echo -e "\nSYNC $repos\n"
+			if ! sync-git $quiet "$repos" ; then
+					echo "Error while syncing local repository $repos !" >&2
+					exit 2
+			fi
 		fi
 done
