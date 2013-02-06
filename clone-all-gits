@@ -47,20 +47,19 @@ function read_args {
 function clone {
 
 	# list repositories
-	if [ -z "$server" ] ; then
-		git_repos=$(ls $repos_dir)
-	else
-		git_repos=$(ssh $server ls $repos_dir)
+	list_cmd="ls -1 $repos_dir"
+	if [ -n "$server" ] ; then
+		list_cmd="ssh $server $list_cmd"
 	fi
 
 	# clone repositories
-	for repos in $git_repos ; do
+	$list_cmd | while read repos ; do
 		if [ ! -e "$clones_dir/$repos" ] ; then
-			if [ -z "$server" ] ; then
-				git clone $repos_dir/$repos "$clones_dir/$repos"
-			else
-				git clone $server:$repos_dir/$repos "$clones_dir/$repos"
+			orig="$repos_dir/$repos"
+			if [ -n "$server" ] ; then
+				orig="$server:$orig"
 			fi
+			git clone "$orig" "$clones_dir/$repos"
 		fi
 	done
 }
