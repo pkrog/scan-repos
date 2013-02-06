@@ -1,0 +1,72 @@
+#!/bin/bash
+
+########
+# HELP #
+########
+
+function help {
+	script_name="${0##*/}"
+    cat <<EOF
+Usage: $script_name <dir_of_git_repositories> <dir_where_to_clone>
+Options:
+  -h        Print this message and exit.
+  -s server Set server to connect to with ssh.
+EOF
+}
+
+#############
+# READ ARGS #
+#############
+
+function read_args {
+
+	# set default values
+	server=
+
+	# read args
+	while getopts "hs:" option; do
+    	case "$option" in
+			h) help ;;
+			s) server=$OPTARG ;;
+    	esac
+	done
+	shift $((OPTIND - 1))
+
+	if (($# > 2 || $# == 0)) ; then
+		echo "Wrong number of arguments." >&2
+		exit 1
+	fi
+	repos_dir=$1
+	clones_dir=$2
+}
+
+#########
+# CLONE #
+#########
+
+function clone {
+
+	# list repositories
+	if [ -z "$server" ] ; then
+		git_repos=$(ls $repos_dir)
+	else
+		git_repos=$(ssh $server ls $repos_dir)
+	fi
+
+	# clone repositories
+	for repos in $git_repos ; do
+		if [ ! -e "$clones_dir/$repos" ] ; then
+			if [ -z "$server" ] ; then
+				git clone $repos_dir/$repos "$clones_dir/$repos"
+			else
+				git clone $server:$repos_dir/$repos "$clones_dir/$repos"
+			fi
+		fi
+	done
+}
+
+########
+# MAIN #
+########
+read_args "$@"
+clone
