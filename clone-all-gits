@@ -47,9 +47,9 @@ function read_args {
 function clone {
 
 	# list repositories
-	list_cmd="ls -1 $repos_dir"
+	list_cmd="find $repos_dir -type d -a -depth 1"
 	if [ -n "$server" ] ; then
-		list_cmd="ssh $server $list_cmd"
+		list_cmd="ssh $server $list_cmd | sed 's!^$repos_dir/!!'"
 	fi
 
 	# clone repositories
