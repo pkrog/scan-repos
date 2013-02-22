@@ -54,7 +54,8 @@ function clone {
 
 	# clone repositories
 	$list_cmd | while read orig ; do
-		dest="$clones_dir/$(basename $orig)"
+		orig_name=$(basename "$orig")
+		dest="$clones_dir/$orig_name"
 		if [ ! -e "$dest" ] ; then
 			if [ -n "$server" ] ; then
 				orig="$server:$orig"
