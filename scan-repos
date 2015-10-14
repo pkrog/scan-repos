@@ -1,0 +1,78 @@
+#!/bin/bash
+
+##############
+# PRINT HELP #
+##############
+
+function print_help {
+	echo scan-repos [-h] [-g]
+	echo -g  Debug mode.
+	echo -h  Print this help message.
+}
+
+#############
+# READ ARGS #
+#############
+
+function read_args {
+	while getopts "hg" flag ; do
+		case $flag in
+			h) print_help ; exit 0 ;;
+			g) debug=1 ;;
+		esac
+	done
+	shift $((OPTIND - 1))
+}
+
+########
+# MAIN #
+########
+
+read_args "$@"
+
+REPOSPATH=$HOME/dev
+
+curdir=$(pwd)
+
+# Loop on all repository paths
+for p in $REPOSPATH ; do
+
+	# List all repositories in current path
+	gitrepos=$(ls -d $p/*/.git | sed 's/\/\.git//g')
+
+	# Loop on all repositories
+	for r in $gitrepos ; do
+
+		# Get repository name
+		reposname=$(basename $r)
+
+		# Change repository's directory
+		cd $r
+
+		# Read repository's status
+		git status | while read line ; do
+
+			if [ "$debug" == "1" ] ; then
+				echo DEBUG $line
+			fi
+
+			# Untracked files
+			if [ -n "$(echo $line | grep '^Untracked files:')" ] ; then
+				echo $reposname: untracked files.
+
+			# Modified files
+			elif [ -n "$(echo $line | grep '^Modified files:')" ] ; then
+				echo $reposname: modified files.
+				continue
+
+			# Submodule modified
+			elif [ -n "$(echo $line | grep '^modified: ')" ] ; then
+				submodule=$(echo $line | sed 's/^modified: \(.*\) (.*$/\1/')
+				reason=$(echo $line | sed 's/^modified: .* (\(.*\))$/\1/')
+				echo $reposname/$submodule: $reason.
+				continue
+			fi
+		done
+		cd $curdir
+	done
+done
