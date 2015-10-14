@@ -6,6 +6,7 @@
 
 function print_help {
 	echo scan-repos [-h] [-g]
+	echo -c  Enable checking of new commits for submodules. By default, it is disabled.
 	echo -g  Debug mode.
 	echo -h  Print this help message.
 }
@@ -19,6 +20,7 @@ function read_args {
 		case $flag in
 			h) print_help ; exit 0 ;;
 			g) debug=1 ;;
+			c) newcommits=1 ;;
 		esac
 	done
 	shift $((OPTIND - 1))
@@ -58,19 +60,40 @@ for p in $REPOSPATH ; do
 
 			# Untracked files
 			if [ -n "$(echo $line | grep '^Untracked files:')" ] ; then
-				echo $reposname: untracked files.
+				echo $reposname': '$'\e[33m''untracked files'$'\e[0m''.'
 
 			# Modified files
 			elif [ -n "$(echo $line | grep '^Modified files:')" ] ; then
-				echo $reposname: modified files.
+				echo $reposname': '$'\e[31m''modified files'$'\e[0m''.'
 				continue
 
 			# Submodule modified
 			elif [ -n "$(echo $line | grep '^modified: ')" ] ; then
 				submodule=$(echo $line | sed 's/^modified: \(.*\) (.*$/\1/')
 				reason=$(echo $line | sed 's/^modified: .* (\(.*\))$/\1/')
-				echo $reposname/$submodule: $reason.
-				continue
+				nbreasons=0
+				msg="$reposname/$submodule: "
+				if [ "$newcommits" == "1" -a -n "$(echo $reason | grep 'new commits')" ] ; then
+					msg="${msg}new commits"
+					nbreasons=$((nbreasons+1))
+				fi
+				if [ -n "$(echo $reason | grep 'modified content')" ] ; then
+					if [ $nbreasons -gt 0 ] ; then
+						msg="$msg, "
+					fi
+					msg=$msg$'\e[31m''modified content'$'\e[0m'
+					nbreasons=$((nbreasons+1))
+				fi
+				if [ -n "$(echo $reason | grep 'untracked content')" ] ; then
+					if [ $nbreasons -gt 0 ] ; then
+						msg="$msg, "
+					fi
+					msg=$msg$'\e[33m''untracked content'$'\e[0m'
+					nbreasons=$((nbreasons+1))
+				fi
+				if [ $nbreasons -gt 0 ] ; then
+					echo ${msg}.
+				fi
 			fi
 		done
 		cd $curdir
