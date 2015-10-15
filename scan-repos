@@ -16,10 +16,14 @@ function print_help {
 #############
 
 function read_args {
+
+	# Set default values
+	debug=0
+
 	while getopts "hg" flag ; do
 		case $flag in
 			h) print_help ; exit 0 ;;
-			g) debug=1 ;;
+			g) debug=$((debug + 1)) ;;
 			c) newcommits=1 ;;
 		esac
 	done
@@ -55,7 +59,7 @@ for p in $REPOSPATH ; do
 		git status | while read line ; do
 
 			# Debug output
-			if [ "$debug" = "1" ] ; then
+			if [ $debug -ge 2 ] ; then
 				echo DEBUG $line
 			fi
 
@@ -79,6 +83,10 @@ for p in $REPOSPATH ; do
 			elif [ -n "$(echo $line | grep '^modified: ')" ] ; then
 				submodule=$(echo $line | sed 's/^modified: \(.*\) (.*$/\1/')
 				reason=$(echo $line | sed 's/^modified: .* (\(.*\))$/\1/')
+				if [ $debug -ge 1 ] ; then
+					echo DEBUG SUBMODULE=$submodule
+					echo DEBUG REASON=$reason
+				fi
 				nbreasons=0
 				msg="$reposname/$submodule: "
 
@@ -107,7 +115,7 @@ for p in $REPOSPATH ; do
 				fi
 
 				# Also each submodule which is only new-commits, must be checked if it is "ahead".
-				if [ "$reasons" = "new commits" ] ; then
+				if [ "$reason" = "new commits" ] ; then
 					cd $submodule
 					ahead=$(git status | grep 'branch is ahead')
 					cd ..
