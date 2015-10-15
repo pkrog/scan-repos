@@ -54,7 +54,8 @@ for p in $REPOSPATH ; do
 		# Read repository's status
 		git status | while read line ; do
 
-			if [ "$debug" == "1" ] ; then
+			# Debug output
+			if [ "$debug" = "1" ] ; then
 				echo DEBUG $line
 			fi
 
@@ -65,7 +66,14 @@ for p in $REPOSPATH ; do
 			# Modified files
 			elif [ -n "$(echo $line | grep '^Modified files:')" ] ; then
 				echo $reposname': '$'\e[31m''modified files'$'\e[0m''.'
-				continue
+
+			# Branch is behind
+			elif [ -n "$(echo $line | grep 'branch is behind')" ] ; then
+				echo $reposname': '$'\e[32m''behind'$'\e[0m''.'
+
+			# Branch is ahead
+			elif [ -n "$(echo $line | grep 'branch is ahead')" ] ; then
+				echo $reposname': '$'\e[34m''ahead'$'\e[0m''.'
 
 			# Submodule modified
 			elif [ -n "$(echo $line | grep '^modified: ')" ] ; then
@@ -73,10 +81,14 @@ for p in $REPOSPATH ; do
 				reason=$(echo $line | sed 's/^modified: .* (\(.*\))$/\1/')
 				nbreasons=0
 				msg="$reposname/$submodule: "
-				if [ "$newcommits" == "1" -a -n "$(echo $reason | grep 'new commits')" ] ; then
+
+				# New commits
+				if [ "$newcommits" = "1" -a -n "$(echo $reason | grep 'new commits')" ] ; then
 					msg="${msg}new commits"
 					nbreasons=$((nbreasons+1))
 				fi
+
+				# Modified content
 				if [ -n "$(echo $reason | grep 'modified content')" ] ; then
 					if [ $nbreasons -gt 0 ] ; then
 						msg="$msg, "
@@ -84,6 +96,8 @@ for p in $REPOSPATH ; do
 					msg=$msg$'\e[31m''modified content'$'\e[0m'
 					nbreasons=$((nbreasons+1))
 				fi
+
+				# Untracked content
 				if [ -n "$(echo $reason | grep 'untracked content')" ] ; then
 					if [ $nbreasons -gt 0 ] ; then
 						msg="$msg, "
@@ -91,11 +105,26 @@ for p in $REPOSPATH ; do
 					msg=$msg$'\e[33m''untracked content'$'\e[0m'
 					nbreasons=$((nbreasons+1))
 				fi
+
+				# Also each submodule which is only new-commits, must be checked if it is "ahead".
+				if [ "$reasons" = "new commits" ] ; then
+					cd $submodule
+					ahead=$(git status | grep 'branch is ahead')
+					cd ..
+					if [ -n "$ahead" ] ; then
+						msg=$msg$'\e[34m''ahead'$'\e[0m'
+						nbreasons=$((nbreasons+1))
+					fi
+				fi
+
+				# Print message if there is one
 				if [ $nbreasons -gt 0 ] ; then
 					echo ${msg}.
 				fi
 			fi
-		done
+		done # while loop on `git status` output.
+
+		# Go back to initial directory
 		cd $curdir
 	done
 done
