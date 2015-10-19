@@ -20,9 +20,10 @@ function read_args {
 	# Set default values
 	debug=0
 
-	while getopts "hg" flag ; do
+	while getopts "hgf" flag ; do
 		case $flag in
 			h) print_help ; exit 0 ;;
+			f) fetch=1 ;;
 			g) debug=$((debug + 1)) ;;
 			c) newcommits=1 ;;
 		esac
@@ -54,6 +55,11 @@ for p in $REPOSPATH ; do
 
 		# Change repository's directory
 		cd $r
+
+		# Fetch
+		if [ -n "$fetch" ] ; then
+			git fetch --all
+		fi
 
 		# Read repository's status
 		git status | while read line ; do
@@ -89,6 +95,13 @@ for p in $REPOSPATH ; do
 				fi
 				nbreasons=0
 				msg="$reposname/$submodule: "
+
+				# Fetch
+				if [ -n "$fetch" ] ; then
+					cd $submodule
+					git fetch --all
+					cd ..
+				fi
 
 				# New commits
 				if [ "$newcommits" = "1" -a -n "$(echo $reason | grep 'new commits')" ] ; then
