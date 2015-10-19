@@ -20,7 +20,7 @@ function read_args {
 	# Set default values
 	debug=0
 
-	while getopts "hgf" flag ; do
+	while getopts "cfgh" flag ; do
 		case $flag in
 			h) print_help ; exit 0 ;;
 			f) fetch=1 ;;
