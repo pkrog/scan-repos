@@ -31,6 +31,36 @@ function read_args {
 	shift $((OPTIND - 1))
 }
 
+###################
+# PRINT DEBUG MSG #
+###################
+
+function print_debug_msg {
+
+	lvl=$1
+	msg=$2
+
+	if [ $debug -ge $lvl ] ; then
+		echo [DEBUG] $msg >&2
+	fi
+}
+
+#########
+# FETCH #
+#########
+
+function fetch {
+
+	repospath=$1
+	prevdir=$(pwd)
+
+	cd $repospath
+	print_debug_msg 1 "Fetching $repospath ..."
+	pwd
+	git fetch --all
+	cd $prevdir
+}
+
 ########
 # MAIN #
 ########
@@ -48,26 +78,23 @@ for p in $REPOSPATH ; do
 	gitrepos=$(ls -d $p/*/.git | sed 's/\/\.git//g')
 
 	# Loop on all repositories
-	for r in $gitrepos ; do
+	for repos in $gitrepos ; do
 
 		# Get repository name
-		reposname=$(basename $r)
+		reposname=$(basename $repos)
 
 		# Change repository's directory
-		cd $r
+		cd $repos
+		print_debug_msg 1 "Looking at status of $repos ..."
 
 		# Fetch
-		if [ -n "$fetch" ] ; then
-			git fetch --all
-		fi
+		if [ -n "$fetch" ] ; then fetch $repos ; fi
 
 		# Read repository's status
 		git status | while read line ; do
 
 			# Debug output
-			if [ $debug -ge 2 ] ; then
-				echo DEBUG $line
-			fi
+			print_debug_msg 2 "STATUS: $line"
 
 			# Untracked files
 			if [ -n "$(echo $line | grep '^Untracked files:')" ] ; then
@@ -89,19 +116,11 @@ for p in $REPOSPATH ; do
 			elif [ -n "$(echo $line | grep '^modified: ')" ] ; then
 				submodule=$(echo $line | sed 's/^modified: \(.*\) (.*$/\1/')
 				reason=$(echo $line | sed 's/^modified: .* (\(.*\))$/\1/')
-				if [ $debug -ge 1 ] ; then
-					echo DEBUG SUBMODULE=$submodule
-					echo DEBUG REASON=$reason
-				fi
 				nbreasons=0
 				msg="$reposname/$submodule: "
 
 				# Fetch
-				if [ -n "$fetch" ] ; then
-					cd $submodule
-					git fetch --all
-					cd ..
-				fi
+				if [ -n "$fetch" ] ; then fetch $repos/$submodule ; fi
 
 				# New commits
 				if [ "$newcommits" = "1" -a -n "$(echo $reason | grep 'new commits')" ] ; then
