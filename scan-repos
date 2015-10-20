@@ -60,7 +60,68 @@ function print_warning_msg {
 
 	warnmsg=$1
 
+	erase_progress_bar
 	echo $'\e[31m''[WARNING]'" $warnmsg"$'\e[0m' >&2
+}
+
+#############
+# PRINT MSG #
+#############
+
+function print_msg {
+
+	message=$1
+
+	erase_progress_bar
+	echo $message
+}
+
+######################
+# ERASE PROGRESS BAR #
+######################
+
+function erase_progress_bar {
+	echo -n $'\r'"                                                            "$'\r'
+}
+
+######################
+# PRINT PROGRESS BAR #
+######################
+
+function print_progress_bar {
+
+	title=$1
+	done=$2
+	total=$3
+	keepbar=$4
+	barsize=32
+	filledsize=$((done*barsize/total))
+	percent=$((done*100/total))
+
+	# Build bar
+	bar=
+	for((i=0;i<barsize;++i)) ; do
+		if [ $i -lt $filledsize ] ; then
+			bar="$bar#"
+		else
+			bar="$bar "
+		fi
+	done
+
+	echo -n $'\r'
+	if [ -n "$title" ] ; then
+		echo -n "$title "
+	fi
+	echo -n "[$bar] ($percent%)"
+	if [ $done -ge $total ] ; then
+		if [ -n "$keepbar" ] ; then
+			echo
+		else
+			erase_progress_bar
+		fi
+	else
+		echo -n $'\r'
+	fi
 }
 
 #########
@@ -91,9 +152,13 @@ function fetch {
 function fetch_all {
 
 	repos_list_file=$1
+	nb_rep=$(cat $repos_list_file | wc -l)
 
+	rep_index=1
 	for rep in $(cat $repos_list_file) ; do
+		print_progress_bar "Fetching" $rep_index $nb_rep
 		fetch $rep
+		((rep_index=rep_index+1))
 	done
 }
 
@@ -173,7 +238,7 @@ function scan {
 
 	# Print message if there is at least one reason
 	if [ -n "$msg" ] ; then
-		echo $repospath: ${msg}.
+		print_msg "$repospath: ${msg}."
 	fi
 
 	cd $prevdir
@@ -186,9 +251,13 @@ function scan {
 function scan_all {
 
 	repos_list_file=$1
+	nb_rep=$(cat $repos_list_file | wc -l)
 
+	rep_index=1
 	for rep in $(cat $repos_list_file) ; do
+		print_progress_bar "Scanning" $rep_index $nb_rep
 		scan $rep
+		((rep_index=rep_index+1))
 	done
 }
 
