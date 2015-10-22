@@ -1,12 +1,25 @@
 #!/bin/bash
 
+#############
+# CONSTANTS #
+#############
+
+# State constants
+AHEAD=1
+BEHIND=2
+MODIFIED=4
+PULLED=8
+PUSHED=16
+UNTRACKED=32
+
 ##############
 # PRINT HELP #
 ##############
 
 function print_help {
-	echo scan-repos [-h] [-g]
-	echo -c  Enable checking of new commits for submodules. By default, it is disabled.
+	echo scan-repos [-a] [-b] [-g] [-h]
+	echo -a  Push repositories whose current branch is ahead.
+	echo -b  Pull repositories whose current branch is behind, and that have no modified files.
 	echo -g  Debug mode.
 	echo -h  Print this help message.
 }
@@ -19,13 +32,17 @@ function read_args {
 
 	# Set default values
 	g_debug=0
+	g_fetch=
+	g_pull=
+	g_push=
 
-	while getopts "cfgh" flag ; do
+	while getopts "abfgh" flag ; do
 		case $flag in
-			h) print_help ; exit 0 ;;
+			a) g_push=1 ;;
+			b) g_pull=1 ;;
 			f) g_fetch=1 ;;
 			g) g_debug=$((g_debug + 1)) ;;
-			c) g_newcommits=1 ;;
+			h) print_help ; exit 0 ;;
 		esac
 	done
 	shift $((OPTIND - 1))
@@ -196,7 +213,6 @@ function scan {
 	repospath=$1
 	prevdir=$(pwd)
 	repos_status_file=$(mktemp -t reposstatus.XXXXXX)
-	msg=
 
 	cd $repospath
 	print_debug_msg 1 "Scanning $repospath ..."
@@ -204,41 +220,86 @@ function scan {
 	# Read repository's status
 	if ! git status >$repos_status_file ; then
 		print_warning_msg "Can't get status of repository $repospath."
-	fi
-	while read line ; do
+	else
 
-		# Debug output
-		print_debug_msg 2 "STATUS: $line"
+		# Status var
+		status=0
 
-		# Untracked files
-		if [ -n "$(echo $line | grep '^Untracked files:')" ] ; then
-			if [ -n "$msg" ] ; then msg="$msg, " ; fi
-			msg=$msg$'\e[33m''untracked files'$'\e[0m'
+		# Read status line by line
+		while read line ; do
+
+			# Debug output
+			print_debug_msg 2 "STATUS: $line"
+
+			# Untracked files
+			if [ -n "$(echo $line | grep '^Untracked files:')" ] ; then
+				((status = status | UNTRACKED))
+			fi
+
+			# Modified files
+			if [ -n "$(echo $line | egrep '^Modified files:|Changes not staged for commit:')" ] ; then
+				((status = status | MODIFIED))
+			fi
+
+			# Branch is behind
+			if [ -n "$(echo $line | grep 'branch is behind')" ] ; then
+				((status = status | BEHIND))
+			fi
+
+			# Branch is ahead
+			if [ -n "$(echo $line | grep 'branch is ahead')" ] ; then
+				((status = status | AHEAD))
+			fi
+
+		done <$repos_status_file
+
+		# Pull
+		if [ -n "$g_pull" -a $((status & BEHIND)) -ne 0 -a $((status & MODIFIED)) -eq 0 ] ; then
+			if ! git pull >/dev/null ; then
+				print_warning_msg "Can't run pull on repository $repospath."
+			fi
+			((status = status ^ BEHIND))
+			((status = status | PULLED))
 		fi
 
-		# Modified files
-		if [ -n "$(echo $line | egrep '^Modified files:|Changes not staged for commit:')" ] ; then
-			if [ -n "$msg" ] ; then msg="$msg, " ; fi
-			msg=$msg$'\e[31m''modified files'$'\e[0m'
+		# Push
+		if [ -n "$g_push" -a $((status & AHEAD)) -ne 0 ] ; then
+			if ! git push >/dev/null ; then
+				print_warning_msg "Can't run push on repository $repospath."
+			fi
+			((status = status ^ AHEAD))
+			((status = status | PUSHED))
 		fi
 
-		# Branch is behind
-		if [ -n "$(echo $line | grep 'branch is behind')" ] ; then
-			if [ -n "$msg" ] ; then msg="$msg, " ; fi
-			msg=$msg$'\e[32m''behind'$'\e[0m'
+		# Print message
+		if [ "$status" -ne 0 ] ; then
+			msg=
+			if [ $((status & BEHIND)) -ne 0 ] ; then
+				if [ -n "$msg" ] ; then msg="$msg, " ; fi
+				msg=$msg$'\e[32m''behind'$'\e[0m'
+			fi
+			if [ $((status & PULLED)) -ne 0 ] ; then
+				if [ -n "$msg" ] ; then msg="$msg, " ; fi
+				msg=$msg$'\e[1;32m''pulled'$'\e[0m'
+			fi
+			if [ $((status & AHEAD)) -ne 0 ] ; then
+				if [ -n "$msg" ] ; then msg="$msg, " ; fi
+				msg=$msg$'\e[34m''ahead'$'\e[0m'
+			fi
+			if [ $((status & PUSHED)) -ne 0 ] ; then
+				if [ -n "$msg" ] ; then msg="$msg, " ; fi
+				msg=$msg$'\e[1;34m''pushed'$'\e[0m'
+			fi
+			if [ $((status & UNTRACKED)) -ne 0 ] ; then
+				if [ -n "$msg" ] ; then msg="$msg, " ; fi
+				msg=$msg$'\e[33m''untracked'$'\e[0m'
+			fi
+			if [ $((status & MODIFIED)) -ne 0 ] ; then
+				if [ -n "$msg" ] ; then msg="$msg, " ; fi
+				msg=$msg$'\e[31m''modified'$'\e[0m'
+			fi
+			print_msg "$repospath: ${msg}."
 		fi
-
-		# Branch is ahead
-		if [ -n "$(echo $line | grep 'branch is ahead')" ] ; then
-			if [ -n "$msg" ] ; then msg="$msg, " ; fi
-			msg=$msg$'\e[34m''ahead'$'\e[0m'
-		fi
-
-	done <$repos_status_file
-
-	# Print message if there is at least one reason
-	if [ -n "$msg" ] ; then
-		print_msg "$repospath: ${msg}."
 	fi
 
 	cd $prevdir
