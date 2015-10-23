@@ -5,12 +5,13 @@
 #############
 
 # State constants
-AHEAD=1
-BEHIND=2
-MODIFIED=4
-PULLED=8
-PUSHED=16
-UNTRACKED=32
+BRANCH_AHEAD=1
+BRANCH_BEHIND=2
+MODIFIED_FILES=4
+BRANCH_PULLED=8
+BRANCH_PUSHED=16
+UNTRACKED_FILES=32
+MODIFIED_SUBMODULES=64
 
 ##############
 # PRINT HELP #
@@ -233,70 +234,79 @@ function scan {
 
 			# Untracked files
 			if [ -n "$(echo $line | grep '^Untracked files:')" ] ; then
-				((status = status | UNTRACKED))
+				((status = status | UNTRACKED_FILES))
+			fi
+
+			# Modified submodules
+			if [ -n "$(echo $line | egrep 'modified: .* (.*)*$')" ] ; then
+				((status = status | MODIFIED_SUBMODULES))
 			fi
 
 			# Modified files
-			if [ -n "$(echo $line | egrep '^Modified files:|Changes not staged for commit:')" ] ; then
-				((status = status | MODIFIED))
+			if [ -n "$(echo $line | egrep 'modified:[^(]*$')" ] ; then
+				((status = status | MODIFIED_FILES))
 			fi
 
 			# Branch is behind
 			if [ -n "$(echo $line | grep 'branch is behind')" ] ; then
-				((status = status | BEHIND))
+				((status = status | BRANCH_BEHIND))
 			fi
 
 			# Branch is ahead
 			if [ -n "$(echo $line | grep 'branch is ahead')" ] ; then
-				((status = status | AHEAD))
+				((status = status | BRANCH_AHEAD))
 			fi
 
 		done <$repos_status_file
 
 		# Pull
-		if [ -n "$g_pull" -a $((status & BEHIND)) -ne 0 -a $((status & MODIFIED)) -eq 0 ] ; then
+		if [ -n "$g_pull" -a $((status & BRANCH_BEHIND)) -ne 0 -a $((status & MODIFIED_FILES)) -eq 0 ] ; then
 			if ! git pull >/dev/null ; then
 				print_warning_msg "Can't run pull on repository $repospath."
 			fi
-			((status = status ^ BEHIND))
-			((status = status | PULLED))
+			((status = status ^ BRANCH_BEHIND))
+			((status = status | BRANCH_PULLED))
 		fi
 
 		# Push
-		if [ -n "$g_push" -a $((status & AHEAD)) -ne 0 ] ; then
+		if [ -n "$g_push" -a $((status & BRANCH_AHEAD)) -ne 0 ] ; then
 			if ! git push >/dev/null ; then
 				print_warning_msg "Can't run push on repository $repospath."
 			fi
-			((status = status ^ AHEAD))
-			((status = status | PUSHED))
+			((status = status ^ BRANCH_AHEAD))
+			((status = status | BRANCH_PUSHED))
 		fi
 
 		# Print message
 		if [ "$status" -ne 0 ] ; then
 			msg=
-			if [ $((status & BEHIND)) -ne 0 ] ; then
+			if [ $((status & BRANCH_BEHIND)) -ne 0 ] ; then
 				if [ -n "$msg" ] ; then msg="$msg, " ; fi
 				msg=$msg$'\e[32m''behind'$'\e[0m'
 			fi
-			if [ $((status & PULLED)) -ne 0 ] ; then
+			if [ $((status & BRANCH_PULLED)) -ne 0 ] ; then
 				if [ -n "$msg" ] ; then msg="$msg, " ; fi
 				msg=$msg$'\e[1;32m''pulled'$'\e[0m'
 			fi
-			if [ $((status & AHEAD)) -ne 0 ] ; then
+			if [ $((status & BRANCH_AHEAD)) -ne 0 ] ; then
 				if [ -n "$msg" ] ; then msg="$msg, " ; fi
 				msg=$msg$'\e[34m''ahead'$'\e[0m'
 			fi
-			if [ $((status & PUSHED)) -ne 0 ] ; then
+			if [ $((status & BRANCH_PUSHED)) -ne 0 ] ; then
 				if [ -n "$msg" ] ; then msg="$msg, " ; fi
 				msg=$msg$'\e[1;34m''pushed'$'\e[0m'
 			fi
-			if [ $((status & UNTRACKED)) -ne 0 ] ; then
+			if [ $((status & UNTRACKED_FILES)) -ne 0 ] ; then
 				if [ -n "$msg" ] ; then msg="$msg, " ; fi
 				msg=$msg$'\e[33m''untracked'$'\e[0m'
 			fi
-			if [ $((status & MODIFIED)) -ne 0 ] ; then
+			if [ $((status & MODIFIED_FILES)) -ne 0 ] ; then
 				if [ -n "$msg" ] ; then msg="$msg, " ; fi
 				msg=$msg$'\e[31m''modified'$'\e[0m'
+			fi
+			if [ $((status & MODIFIED_SUBMODULES)) -ne 0 ] ; then
+				if [ -n "$msg" ] ; then msg="$msg, " ; fi
+				msg=$msg$'\e[31m''modified submodules'$'\e[0m'
 			fi
 			print_msg "$repospath: ${msg}."
 		fi
