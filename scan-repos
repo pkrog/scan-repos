@@ -263,18 +263,20 @@ function scan {
 		if [ -n "$g_pull" -a $((status & BRANCH_BEHIND)) -ne 0 -a $((status & MODIFIED_FILES)) -eq 0 ] ; then
 			if ! git pull >/dev/null ; then
 				print_warning_msg "Can't run pull on repository $repospath."
+			else
+				((status = status ^ BRANCH_BEHIND))
+				((status = status | BRANCH_PULLED))
 			fi
-			((status = status ^ BRANCH_BEHIND))
-			((status = status | BRANCH_PULLED))
 		fi
 
 		# Push
 		if [ -n "$g_push" -a $((status & BRANCH_AHEAD)) -ne 0 ] ; then
-			if ! git push >/dev/null ; then
+			if ! git push >/dev/null 2>&1 ; then
 				print_warning_msg "Can't run push on repository $repospath."
+			else
+				((status = status ^ BRANCH_AHEAD))
+				((status = status | BRANCH_PUSHED))
 			fi
-			((status = status ^ BRANCH_AHEAD))
-			((status = status | BRANCH_PUSHED))
 		fi
 
 		# Print message
