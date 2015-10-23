@@ -282,31 +282,31 @@ function scan {
 			msg=
 			if [ $((status & BRANCH_BEHIND)) -ne 0 ] ; then
 				if [ -n "$msg" ] ; then msg="$msg, " ; fi
-				msg=$msg$'\e[32m''behind'$'\e[0m'
+				msg=$msg$'\e[32m''branch is behind'$'\e[0m'
 			fi
 			if [ $((status & BRANCH_PULLED)) -ne 0 ] ; then
 				if [ -n "$msg" ] ; then msg="$msg, " ; fi
-				msg=$msg$'\e[1;32m''pulled'$'\e[0m'
+				msg=$msg$'\e[1;32m''branch has been pulled'$'\e[0m'
 			fi
 			if [ $((status & BRANCH_AHEAD)) -ne 0 ] ; then
 				if [ -n "$msg" ] ; then msg="$msg, " ; fi
-				msg=$msg$'\e[34m''ahead'$'\e[0m'
+				msg=$msg$'\e[34m''branch is ahead'$'\e[0m'
 			fi
 			if [ $((status & BRANCH_PUSHED)) -ne 0 ] ; then
 				if [ -n "$msg" ] ; then msg="$msg, " ; fi
-				msg=$msg$'\e[1;34m''pushed'$'\e[0m'
+				msg=$msg$'\e[1;34m''branch has been pushed'$'\e[0m'
 			fi
 			if [ $((status & UNTRACKED_FILES)) -ne 0 ] ; then
 				if [ -n "$msg" ] ; then msg="$msg, " ; fi
-				msg=$msg$'\e[33m''untracked'$'\e[0m'
+				msg=$msg$'\e[33m''untracked files'$'\e[0m'
 			fi
 			if [ $((status & MODIFIED_FILES)) -ne 0 ] ; then
 				if [ -n "$msg" ] ; then msg="$msg, " ; fi
-				msg=$msg$'\e[31m''modified'$'\e[0m'
+				msg=$msg$'\e[31m''modified files'$'\e[0m'
 			fi
 			if [ $((status & MODIFIED_SUBMODULES)) -ne 0 ] ; then
 				if [ -n "$msg" ] ; then msg="$msg, " ; fi
-				msg=$msg$'\e[31m''modified submodules'$'\e[0m'
+				msg=$msg$'\e[35m''modified submodules'$'\e[0m'
 			fi
 			print_msg "$repospath: ${msg}."
 		fi
