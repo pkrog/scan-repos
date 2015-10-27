@@ -12,6 +12,7 @@ BRANCH_PULLED=8
 BRANCH_PUSHED=16
 UNTRACKED_FILES=32
 MODIFIED_SUBMODULES=64
+BRANCH_DIVERGED=128
 
 ##############
 # PRINT HELP #
@@ -260,14 +261,22 @@ function scan {
 				((status = status | BRANCH_AHEAD))
 			fi
 
+			# Branch has diverged
+			if [ -n "$(echo $line | grep 'branch and .* have diverged')" ] ; then
+				((status = status | BRANCH_DIVERGED))
+			fi
+
 		done <$repos_status_file
 
 		# Pull
-		if [ -n "$g_pull" -a $((status & BRANCH_BEHIND)) -ne 0 -a $((status & MODIFIED_FILES)) -eq 0 ] ; then
+		if [ -n "$g_pull" -a $((status & (BRANCH_BEHIND | BRANCH_DIVERGED) )) -ne 0 -a $((status & MODIFIED_FILES)) -eq 0 ] ; then
 			if ! git pull >/dev/null ; then
 				print_warning_msg "Can't run pull on repository $repospath."
 			else
-				((status = status ^ BRANCH_BEHIND))
+				if [ $((status & BRANCH_DIVERGED)) -ne 0 ] ; then
+					((status = status | BRANCH_AHEAD))
+				fi
+				((status = status ^ (status & (BRANCH_BEHIND | BRANCH_DIVERGED) ) ))
 				((status = status | BRANCH_PULLED))
 			fi
 		fi
@@ -277,7 +286,7 @@ function scan {
 			if ! git push >/dev/null 2>&1 ; then
 				print_warning_msg "Can't run push on repository $repospath."
 			else
-				((status = status ^ BRANCH_AHEAD))
+				((status = status ^ (status & BRANCH_AHEAD) ))
 				((status = status | BRANCH_PUSHED))
 			fi
 		fi
@@ -285,6 +294,10 @@ function scan {
 		# Print message
 		if [ "$status" -ne 0 ] ; then
 			msg=
+			if [ $((status & BRANCH_DIVERGED)) -ne 0 ] ; then
+				if [ -n "$msg" ] ; then msg="$msg, " ; fi
+				msg=$msg$'\e[36m''branch has diverged'$'\e[0m'
+			fi
 			if [ $((status & BRANCH_BEHIND)) -ne 0 ] ; then
 				if [ -n "$msg" ] ; then msg="$msg, " ; fi
 				msg=$msg$'\e[32m''branch is behind'$'\e[0m'
