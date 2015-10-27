@@ -18,11 +18,12 @@ MODIFIED_SUBMODULES=64
 ##############
 
 function print_help {
-	echo scan-repos [-a] [-b] [-g] [-h]
+	echo scan-repos [-a] [-b] [-g] [-h] [-s]
 	echo -a  Push repositories whose current branch is ahead.
 	echo -b  Pull repositories whose current branch is behind, and that have no modified files.
 	echo -g  Debug mode.
 	echo -h  Print this help message.
+	echo -s  Check also the states of submodules.
 }
 
 #############
@@ -36,14 +37,16 @@ function read_args {
 	g_fetch=
 	g_pull=
 	g_push=
+	g_submodules=
 
-	while getopts "abfgh" flag ; do
+	while getopts "abfghs" flag ; do
 		case $flag in
 			a) g_push=1 ;;
 			b) g_pull=1 ;;
 			f) g_fetch=1 ;;
 			g) g_debug=$((g_debug + 1)) ;;
 			h) print_help ; exit 0 ;;
+			s) g_submodules=1 ;;
 		esac
 	done
 	shift $((OPTIND - 1))
@@ -238,7 +241,7 @@ function scan {
 			fi
 
 			# Modified submodules
-			if [ -n "$(echo $line | egrep 'modified: .* (.*)*$')" ] ; then
+			if [ -n "$g_submodules" -a -n "$(echo $line | egrep 'modified: .* (.*)*$')" ] ; then
 				((status = status | MODIFIED_SUBMODULES))
 			fi
 
