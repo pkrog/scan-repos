@@ -19,6 +19,7 @@ BRANCH_DIVERGED=128
 ##############
 
 function print_help {
+	echo Usage:
 	echo scan-repos [-a] [-b] [-g] [-h] [-s]
 	echo -a  Push repositories whose current branch is ahead.
 	echo -b  Pull repositories whose current branch is behind, and that have no modified files.
@@ -57,9 +58,12 @@ function read_args {
 
 	if [ -n "$*" ] ; then
 		g_repos_path="$*"
+	elif [ -n "$REPOSPATH" ] ; then
+		g_repos_path=$REPOSPATH
 	else
-		# Replace by $REPOSPATH env var
-		g_repos_path=$HOME/dev
+		print_warning_msg "No repositories on which to run."
+		print_help
+		exit 1
 	fi
 }
 
