@@ -24,6 +24,7 @@ function print_help {
 	echo -b  Pull repositories whose current branch is behind, and that have no modified files.
 	echo -g  Debug mode.
 	echo -h  Print this help message.
+	echo -p  Display progress bar.
 	echo -s  Check also the states of submodules.
 }
 
@@ -39,14 +40,16 @@ function read_args {
 	g_pull=
 	g_push=
 	g_submodules=
+	g_progress=
 
-	while getopts "abfghs" flag ; do
+	while getopts "abfghps" flag ; do
 		case $flag in
 			a) g_push=1 ;;
 			b) g_pull=1 ;;
 			f) g_fetch=1 ;;
 			g) g_debug=$((g_debug + 1)) ;;
 			h) print_help ; exit 0 ;;
+			p) g_progress=1 ;;
 			s) g_submodules=1 ;;
 		esac
 	done
@@ -93,7 +96,7 @@ function print_warning_msg {
 function print_msg {
 
 	message=$1
-
+	
 	erase_progress_bar
 	echo $message
 }
@@ -103,7 +106,9 @@ function print_msg {
 ######################
 
 function erase_progress_bar {
-	echo -n $'\r'"                                                            "$'\r'
+	if [ -n "$g_progress" ] ; then
+		echo -n $'\r'"                                                            "$'\r'
+	fi
 }
 
 ######################
@@ -120,29 +125,31 @@ function print_progress_bar {
 	filledsize=$((done*barsize/total))
 	percent=$((done*100/total))
 
-	# Build bar
-	bar=
-	for((i=0;i<barsize;++i)) ; do
-		if [ $i -lt $filledsize ] ; then
-			bar="$bar#"
-		else
-			bar="$bar "
-		fi
-	done
+	if [ -n "$g_progress" ] ; then
+		# Build bar
+		bar=
+		for((i=0;i<barsize;++i)) ; do
+			if [ $i -lt $filledsize ] ; then
+				bar="$bar#"
+			else
+				bar="$bar "
+			fi
+		done
 
-	echo -n $'\r'
-	if [ -n "$title" ] ; then
-		echo -n "$title "
-	fi
-	echo -n "[$bar] ($percent%)"
-	if [ $done -ge $total ] ; then
-		if [ -n "$keepbar" ] ; then
-			echo
-		else
-			erase_progress_bar
-		fi
-	else
 		echo -n $'\r'
+		if [ -n "$title" ] ; then
+			echo -n "$title "
+		fi
+		echo -n "[$bar] ($percent%)"
+		if [ $done -ge $total ] ; then
+			if [ -n "$keepbar" ] ; then
+				echo
+			else
+				erase_progress_bar
+			fi
+		else
+			echo -n $'\r'
+		fi
 	fi
 }
 
