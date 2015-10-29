@@ -1,0 +1,23 @@
+#!/bin/bash
+
+scriptdir=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
+scanrepos=$scriptdir/../scan-repos
+
+########
+# MAIN #
+########
+
+rm -rf repos-orig repos-clone
+
+mkdir repos-orig
+cd repos-orig
+touch a
+git init
+git add .
+git commit -m "Init."
+cd ..
+
+git clone repos-orig repos-clone
+echo "AAA" >> repos-orig/a
+$scanrepos repos-orig > scanrepos.output
+diff scanrepos.output scanrepos.output.ref
