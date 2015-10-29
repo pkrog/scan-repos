@@ -19,14 +19,15 @@ BRANCH_DIVERGED=128
 ##############
 
 function print_help {
-	echo Usage:
-	echo scan-repos [-a] [-b] [-g] [-h] [-s]
-	echo -a  Push repositories whose current branch is ahead.
-	echo -b  Pull repositories whose current branch is behind, and that have no modified files.
-	echo -g  Debug mode.
-	echo -h  Print this help message.
-	echo -p  Display progress bar.
-	echo -s  Check also the states of submodules.
+	echo "Usage: scan-repos [options]"
+	echo
+	echo    -a  Push repositories whose current branch is ahead.
+	echo    -b  Pull repositories whose current branch is behind, and that have no modified files.
+	echo    -f  Fetch repositories.
+	echo    -g  Debug mode.
+	echo    -h  Print this help message.
+	echo    -p  Display progress bar.
+	echo    -s  Check also the states of submodules.
 }
 
 #############
