@@ -173,7 +173,7 @@ function fetch {
 	print_debug_msg 1 "Fetching $repospath ..."
 
 	if ! git fetch --all $quiet 2>/dev/null ; then
-		print_warning_msg "Can't fetch repository $repos."
+		print_warning_msg "Can't fetch repository $repospath."
 	fi
 
 	cd $prevdir
