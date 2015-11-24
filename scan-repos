@@ -13,6 +13,7 @@ BRANCH_PUSHED=16
 UNTRACKED_FILES=32
 MODIFIED_SUBMODULES=64
 BRANCH_DIVERGED=128
+DELETED_FILES=256
 
 ##############
 # PRINT HELP #
@@ -258,6 +259,11 @@ function scan {
 				((status = status | MODIFIED_SUBMODULES))
 			fi
 
+			# Deleted files
+			if [ -n "$(echo $line | egrep 'deleted:[^(]*$')" ] ; then
+				((status = status | DELETED_FILES))
+			fi
+
 			# Modified files
 			if [ -n "$(echo $line | egrep 'modified:[^(]*$')" ] ; then
 				((status = status | MODIFIED_FILES))
@@ -281,7 +287,7 @@ function scan {
 		done <$repos_status_file
 
 		# Pull
-		if [ -n "$g_pull" -a $((status & (BRANCH_BEHIND | BRANCH_DIVERGED) )) -ne 0 -a $((status & MODIFIED_FILES)) -eq 0 ] ; then
+		if [ -n "$g_pull" -a $((status & (BRANCH_BEHIND | BRANCH_DIVERGED) )) -ne 0 -a $((status & (MODIFIED_FILES | DELETED_FILES))) -eq 0 ] ; then
 			if ! git pull >/dev/null ; then
 				print_warning_msg "Can't run pull on repository $repospath."
 			else
@@ -333,6 +339,10 @@ function scan {
 			if [ $((status & MODIFIED_FILES)) -ne 0 ] ; then
 				if [ -n "$msg" ] ; then msg="$msg, " ; fi
 				msg=$msg$'\e[31m''modified files'$'\e[0m'
+			fi
+			if [ $((status & DELETED_FILES)) -ne 0 ] ; then
+				if [ -n "$msg" ] ; then msg="$msg, " ; fi
+				msg=$msg$'\e[1;31m''deleted files'$'\e[0m'
 			fi
 			if [ $((status & MODIFIED_SUBMODULES)) -ne 0 ] ; then
 				if [ -n "$msg" ] ; then msg="$msg, " ; fi
