@@ -1,23 +1,75 @@
 #!/bin/bash
 
-scriptdir=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
-scanrepos=$scriptdir/../scan-repos
+#############
+# CONSTANTS #
+#############
+
+SCRIPTDIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
+SCANREPOS=$SCRIPTDIR/../scan-repos
+
+REPOSORIG=repos-orig
+REPOSCLONE=repos-clone
+FILE=a.txt
+
+#########
+# CHECK #
+#########
+
+function check {
+	echo -n $1...
+	if $1 ; then
+		echo success. 
+	else
+		echo failure.
+		exit 1
+	fi
+}
+
+#########
+# CLEAN #
+#########
+
+function clean {
+	rm -rf repos-* *.output
+}
+
+###########
+# RUN GIT #
+###########
+
+function run_git {
+	git $* >/dev/null 2>&1
+}
+
+##############
+# MAKE REPOS #
+##############
+
+function mk_repos {
+	clean
+	mkdir $REPOSORIG
+	cd $REPOSORIG
+	touch $FILE
+	run_git init
+	run_git add .
+	run_git commit -m "Init."
+	cd ..
+}
+
+######################
+# TEST MODIFIED FILE #
+######################
+
+function test_modified_file {
+	mk_repos
+	run_git clone $REPOSORIG repos-clone
+	echo "AAA" >> $REPOSORIG/$FILE
+	$SCANREPOS $REPOSORIG > modified_file.output
+	diff modified_file.output modified_file.output.ref >/dev/null
+}
 
 ########
 # MAIN #
 ########
 
-rm -rf repos-orig repos-clone
-
-mkdir repos-orig
-cd repos-orig
-touch a
-git init
-git add .
-git commit -m "Init."
-cd ..
-
-git clone repos-orig repos-clone
-echo "AAA" >> repos-orig/a
-$scanrepos repos-orig > scanrepos.output
-diff scanrepos.output scanrepos.output.ref
+check test_modified_file

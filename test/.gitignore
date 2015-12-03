@@ -1,3 +1,2 @@
-repos-clone
-repos-orig
+repos-*
 *.output
