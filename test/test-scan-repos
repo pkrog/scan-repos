@@ -7,10 +7,6 @@
 SCRIPTDIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
 SCANREPOS=$SCRIPTDIR/../scan-repos
 
-REPOSORIG=repos-orig
-REPOSCLONE=repos-clone
-FILE=a.txt
-
 #########
 # CHECK #
 #########
@@ -25,14 +21,6 @@ function check {
 	fi
 }
 
-#########
-# CLEAN #
-#########
-
-function clean {
-	rm -rf repos-* *.output
-}
-
 ###########
 # RUN GIT #
 ###########
@@ -41,18 +29,45 @@ function run_git {
 	git "$@" >/dev/null 2>&1
 }
 
+###############
+# CLEAN REPOS #
+###############
+
+function clean_repos {
+	rm -rf repos-*
+}
+
 ##############
 # MAKE REPOS #
 ##############
 
 function mk_repos {
-	clean
-	mkdir $REPOSORIG
-	cd $REPOSORIG
-	touch $FILE
+
+	repos=$1
+	file=$2
+
+	mkdir $repos
+	cd $repos
+	touch $file
 	run_git init
 	run_git add .
 	run_git commit -m "Init."
+	cd ..
+}
+
+################
+# MODIFY REPOS #
+################
+
+function modify_repos {
+
+	repos=$1
+	file=$2
+
+	cd $repos
+	echo "AAA" >> $file
+	run_git add .
+	run_git commit -m "Add some text."
 	cd ..
 }
 
@@ -61,9 +76,10 @@ function mk_repos {
 ######################
 
 function test_modified_file {
-	mk_repos
-	echo "AAA" >> $REPOSORIG/$FILE
-	$SCANREPOS $REPOSORIG > modified_file.output
+	clean_repos
+	mk_repos repos-a a
+	echo "AAA" >> repos-a/a
+	$SCANREPOS repos-a > modified_file.output
 	diff modified_file.output modified_file.output.ref >/dev/null
 }
 
@@ -72,9 +88,10 @@ function test_modified_file {
 #####################
 
 function test_deleted_file {
-	mk_repos
-	rm $REPOSORIG/$FILE
-	$SCANREPOS $REPOSORIG > deleted_file.output
+	clean_repos
+	mk_repos repos-a a
+	rm repos-a/a
+	$SCANREPOS repos-a > deleted_file.output
 	diff deleted_file.output deleted_file.output.ref >/dev/null
 }
 
@@ -83,9 +100,10 @@ function test_deleted_file {
 #######################
 
 function test_untracked_file {
-	mk_repos
-	touch $REPOSORIG/some_untracked_file.txt
-	$SCANREPOS $REPOSORIG > untracked_file.output
+	clean_repos
+	mk_repos repos-a a
+	touch repos-a/some_untracked_file.txt
+	$SCANREPOS repos-a > untracked_file.output
 	diff untracked_file.output untracked_file.output.ref >/dev/null
 }
 
@@ -94,14 +112,11 @@ function test_untracked_file {
 #####################
 
 function test_branch_ahead {
-	mk_repos
-	run_git clone $REPOSORIG $REPOSCLONE
-	cd $REPOSCLONE
-	echo "AAA" >> $FILE
-	run_git add .
-	run_git commit -m "Add some text."
-	cd ..
-	$SCANREPOS $REPOSCLONE > branch_ahead.output
+	clean_repos
+	mk_repos repos-orig a
+	run_git clone repos-orig repos-clone
+	modify_repos repos-clone a
+	$SCANREPOS repos-clone > branch_ahead.output
 	diff branch_ahead.output branch_ahead.output.ref >/dev/null
 }
 
@@ -110,16 +125,14 @@ function test_branch_ahead {
 ######################
 
 function test_branch_behind {
-	mk_repos
-	run_git clone $REPOSORIG $REPOSCLONE
-	cd $REPOSORIG
-	echo "AAA" >> $FILE
-	run_git add .
-	run_git commit -m "Add some text."
-	cd ../$REPOSCLONE
+	clean_repos
+	mk_repos repos-orig a
+	run_git clone repos-orig repos-clone
+	modify_repos repos-orig a
+	cd repos-clone
 	run_git fetch
 	cd ..
-	$SCANREPOS $REPOSCLONE > branch_behind.output
+	$SCANREPOS repos-clone > branch_behind.output
 	diff branch_behind.output branch_behind.output.ref >/dev/null
 }
 
@@ -128,15 +141,25 @@ function test_branch_behind {
 ##############
 
 function test_fetch {
-	mk_repos
-	run_git clone $REPOSORIG $REPOSCLONE
-	cd $REPOSORIG
-	echo "AAA" >> $FILE
-	run_git add .
-	run_git commit -m "Add some text."
-	cd ..
-	$SCANREPOS -f $REPOSCLONE > fetch.output
+	clean_repos
+	mk_repos repos-orig a
+	run_git clone repos-orig repos-clone
+	modify_repos repos-orig a
+	$SCANREPOS -f repos-clone > fetch.output
 	diff fetch.output branch_behind.output.ref >/dev/null
+}
+
+#############
+# TEST PULL #
+#############
+
+function test_pull {
+	clean_repos
+	mk_repos repos-orig a
+	run_git clone repos-orig repos-clone
+	modify_repos repos-orig a
+	$SCANREPOS -b repos-clone > pull.output
+	diff pull.output pull.output.ref >/dev/null
 }
 
 ########
@@ -149,3 +172,4 @@ check test_untracked_file
 check test_branch_ahead
 check test_branch_behind
 check test_fetch
+check test_pull

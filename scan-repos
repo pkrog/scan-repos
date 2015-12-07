@@ -385,7 +385,7 @@ curdir=$(pwd)
 list_repos $g_repos_path >$repos_list_file
 
 # Fetch
-if [ -n "$g_fetch" ] ; then fetch_all $repos_list_file ; fi
+if [ -n "$g_fetch" -o -n "$g_pull" ] ; then fetch_all $repos_list_file ; fi
 
 # Scan
 scan_all $repos_list_file
