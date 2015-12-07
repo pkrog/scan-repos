@@ -62,7 +62,6 @@ function mk_repos {
 
 function test_modified_file {
 	mk_repos
-	run_git clone $REPOSORIG repos-clone
 	echo "AAA" >> $REPOSORIG/$FILE
 	$SCANREPOS $REPOSORIG > modified_file.output
 	diff modified_file.output modified_file.output.ref >/dev/null
@@ -74,10 +73,20 @@ function test_modified_file {
 
 function test_deleted_file {
 	mk_repos
-	run_git clone $REPOSORIG repos-clone
 	rm $REPOSORIG/$FILE
 	$SCANREPOS $REPOSORIG > deleted_file.output
 	diff deleted_file.output deleted_file.output.ref >/dev/null
+}
+
+#######################
+# TEST UNTRACKED FILE #
+#######################
+
+function test_untracked_file {
+	mk_repos
+	touch $REPOSORIG/some_untracked_file.txt
+	$SCANREPOS $REPOSORIG > untracked_file.output
+	diff untracked_file.output untracked_file.output.ref >/dev/null
 }
 
 ########
@@ -86,3 +95,4 @@ function test_deleted_file {
 
 check test_modified_file
 check test_deleted_file
+check test_untracked_file
