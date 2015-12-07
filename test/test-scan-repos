@@ -38,7 +38,7 @@ function clean {
 ###########
 
 function run_git {
-	git $* >/dev/null 2>&1
+	git "$@" >/dev/null 2>&1
 }
 
 ##############
@@ -89,6 +89,22 @@ function test_untracked_file {
 	diff untracked_file.output untracked_file.output.ref >/dev/null
 }
 
+#####################
+# TEST BRANCH AHEAD #
+#####################
+
+function test_branch_ahead {
+	mk_repos
+	run_git clone $REPOSORIG $REPOSCLONE
+	cd $REPOSCLONE
+	echo "AAA" >> $FILE
+	run_git add .
+	run_git commit -m "Add some text."
+	cd ..
+	$SCANREPOS $REPOSCLONE > branch_ahead.output
+	diff branch_ahead.output branch_ahead.output.ref >/dev/null
+}
+
 ########
 # MAIN #
 ########
@@ -96,3 +112,4 @@ function test_untracked_file {
 check test_modified_file
 check test_deleted_file
 check test_untracked_file
+check test_branch_ahead
