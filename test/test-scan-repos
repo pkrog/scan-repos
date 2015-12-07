@@ -123,6 +123,22 @@ function test_branch_behind {
 	diff branch_behind.output branch_behind.output.ref >/dev/null
 }
 
+##############
+# TEST FETCH #
+##############
+
+function test_fetch {
+	mk_repos
+	run_git clone $REPOSORIG $REPOSCLONE
+	cd $REPOSORIG
+	echo "AAA" >> $FILE
+	run_git add .
+	run_git commit -m "Add some text."
+	cd ..
+	$SCANREPOS -f $REPOSCLONE > fetch.output
+	diff fetch.output branch_behind.output.ref >/dev/null
+}
+
 ########
 # MAIN #
 ########
@@ -132,3 +148,4 @@ check test_deleted_file
 check test_untracked_file
 check test_branch_ahead
 check test_branch_behind
+check test_fetch
