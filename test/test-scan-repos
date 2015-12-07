@@ -68,8 +68,21 @@ function test_modified_file {
 	diff modified_file.output modified_file.output.ref >/dev/null
 }
 
+#####################
+# TEST DELETED FILE #
+#####################
+
+function test_deleted_file {
+	mk_repos
+	run_git clone $REPOSORIG repos-clone
+	rm $REPOSORIG/$FILE
+	$SCANREPOS $REPOSORIG > deleted_file.output
+	diff deleted_file.output deleted_file.output.ref >/dev/null
+}
+
 ########
 # MAIN #
 ########
 
 check test_modified_file
+check test_deleted_file
