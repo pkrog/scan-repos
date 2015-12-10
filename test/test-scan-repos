@@ -37,6 +37,21 @@ function clean_repos {
 	rm -rf repos-*
 }
 
+
+###################
+# MAKE BARE REPOS #
+###################
+
+function mk_bare_repos {
+
+	repos=$1
+
+	mkdir $repos
+	cd $repos
+	run_git init --bare
+	cd ..
+}
+
 ##############
 # MAKE REPOS #
 ##############
@@ -162,6 +177,23 @@ function test_pull {
 	diff pull.output pull.output.ref >/dev/null
 }
 
+#############
+# TEST PUSH #
+#############
+
+function test_push {
+	clean_repos
+	mk_bare_repos repos-bare
+	mk_repos repos-orig a
+	cd repos-orig
+	run_git remote add origin ../repos-bare
+	run_git push -u origin master
+	cd ..
+	modify_repos repos-orig a
+	$SCANREPOS -a repos-orig > push.output
+	diff push.output push.output.ref >/dev/null
+}
+
 ########
 # MAIN #
 ########
@@ -173,3 +205,4 @@ check test_branch_ahead
 check test_branch_behind
 check test_fetch
 check test_pull
+check test_push
