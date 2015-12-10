@@ -12,13 +12,22 @@ SCANREPOS=$SCRIPTDIR/../scan-repos
 #########
 
 function check {
+
+	local testfct=$1
+
+	# Run test
 	echo -n $1...
-	if $1 ; then
-		echo success. 
-	else
+	test_output=$($testfct 2>&1)
+
+	# Failure
+	if [ $? -gt 0 ] ; then
 		echo failure.
+		echo $test_output
 		exit 1
 	fi
+
+	# Success
+	echo success. 
 }
 
 ###########
@@ -44,7 +53,7 @@ function clean_repos {
 
 function mk_bare_repos {
 
-	repos=$1
+	local repos=$1
 
 	mkdir $repos
 	cd $repos
@@ -58,8 +67,8 @@ function mk_bare_repos {
 
 function mk_repos {
 
-	repos=$1
-	file=$2
+	local repos=$1
+	local file=$2
 
 	mkdir $repos
 	cd $repos
@@ -70,19 +79,35 @@ function mk_repos {
 	cd ..
 }
 
-################
-# MODIFY REPOS #
-################
+#####################
+# MODIFY REPOS FILE #
+#####################
 
-function modify_repos {
+function modify_repos_file {
 
-	repos=$1
-	file=$2
+	local repos=$1
+	local file=$2
 
 	cd $repos
 	echo "AAA" >> $file
 	run_git add .
 	run_git commit -m "Add some text."
+	cd ..
+}
+
+#####################
+# DELETE REPOS FILE #
+#####################
+
+function delete_repos_file {
+
+	local repos=$1
+	local file=$2
+
+	cd $repos
+	rm $file
+	run_git add .
+	run_git commit -m "Removed file."
 	cd ..
 }
 
@@ -130,7 +155,7 @@ function test_branch_ahead {
 	clean_repos
 	mk_repos repos-orig a
 	run_git clone repos-orig repos-clone
-	modify_repos repos-clone a
+	modify_repos_file repos-clone a
 	$SCANREPOS repos-clone > branch_ahead.output
 	diff branch_ahead.output branch_ahead.output.ref >/dev/null
 }
@@ -143,7 +168,7 @@ function test_branch_behind {
 	clean_repos
 	mk_repos repos-orig a
 	run_git clone repos-orig repos-clone
-	modify_repos repos-orig a
+	modify_repos_file repos-orig a
 	cd repos-clone
 	run_git fetch
 	cd ..
@@ -159,7 +184,7 @@ function test_fetch {
 	clean_repos
 	mk_repos repos-orig a
 	run_git clone repos-orig repos-clone
-	modify_repos repos-orig a
+	modify_repos_file repos-orig a
 	$SCANREPOS -f repos-clone > fetch.output
 	diff fetch.output branch_behind.output.ref >/dev/null
 }
@@ -172,7 +197,7 @@ function test_pull {
 	clean_repos
 	mk_repos repos-orig a
 	run_git clone repos-orig repos-clone
-	modify_repos repos-orig a
+	modify_repos_file repos-orig a
 	$SCANREPOS -b repos-clone > pull.output
 	diff pull.output pull.output.ref >/dev/null
 }
@@ -189,9 +214,39 @@ function test_push {
 	run_git remote add origin ../repos-bare
 	run_git push -u origin master
 	cd ..
-	modify_repos repos-orig a
+	modify_repos_file repos-orig a
 	$SCANREPOS -a repos-orig > push.output
 	diff push.output push.output.ref >/dev/null
+}
+
+######################
+# TEST PUSH CONFLICT #
+######################
+
+function test_push_conflict {
+
+	# Create a bare repos and an orig repos
+	clean_repos
+	mk_bare_repos repos-bare
+	mk_repos repos-orig a
+	cd repos-orig
+	run_git remote add origin ../repos-bare
+	run_git push -u origin master
+	cd ..
+
+	# Clone orig repos
+	run_git clone repos-orig repos-clone
+
+	# Modify orig repos
+	modify_repos_file repos-orig a
+	$SCANREPOS -a repos-orig > push_conflict_orig.output
+	diff push_conflict_orig.output push.output.ref >/dev/null
+
+	# Modify clone repos and try to push
+	delete_repos_file repos-clone a
+	$SCANREPOS -a repos-clone >push_conflict_clone.output 2>&1
+	diff push_conflict_clone.output push_conflict_clone.output.ref >/dev/null
+
 }
 
 ########
@@ -206,3 +261,4 @@ check test_branch_behind
 check test_fetch
 check test_pull
 check test_push
+check test_push_conflict
