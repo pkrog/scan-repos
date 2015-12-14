@@ -31,8 +31,12 @@ PROGRESS=
 ##############
 
 function print_help {
-	echo "Usage: scan-repos [options]"
+	echo "Usage: scan-repos [options] repositories"
 	echo
+	echo "Repositories are either real repositories or folders containing repositories."
+	echo "If no repositories are specified, then the value of the environment variable REPOSPATH is used if it is set. Otherwise the current directory is used."
+	echo
+	echo "Options:"
 	echo "   -a  Push repositories whose current branch is ahead."
 	echo "   -b  Pull repositories whose current branch is behind, and that have no modified files."
 	echo "   -f  Fetch repositories."
@@ -61,6 +65,7 @@ function error {
 
 function read_args {
 
+	# Read options
 	while true ; do
 		case $1 in
 			-a|--push)          PUSH=1 ;;
@@ -77,14 +82,11 @@ function read_args {
 	done
 	shift $((OPTIND - 1))
 
+	# Read left arguments as list of repositories
 	if [ -n "$*" ] ; then
-		g_repos_path="$*"
-	elif [ -n "$REPOSPATH" ] ; then
-		g_repos_path=$REPOSPATH
-	else
-		print_warning_msg "No repositories on which to run."
-		print_help
-		exit 1
+		REPOSPATH="$*" # Replace any value of REPOSPATH with current specified list of repositories
+	elif [ -z "$REPOSPATH" ] ; then
+		REPOSPATH=. # Use current directory
 	fi
 }
 
@@ -401,7 +403,7 @@ repos_list_file=$(mktemp -t reposlist.XXXXXX)
 curdir=$(pwd)
 
 # List all repositories
-list_repos $g_repos_path >$repos_list_file
+list_repos $REPOSPATH >$repos_list_file
 
 # Fetch
 if [ -n "$FETCH" -o -n "$PULL" ] ; then fetch_all $repos_list_file ; fi

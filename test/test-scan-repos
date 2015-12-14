@@ -14,10 +14,11 @@ SCANREPOS=$SCRIPTDIR/../scan-repos
 function check {
 
 	local testfct=$1
+	shift
 
 	# Run test
-	echo -n $1...
-	test_output=$($testfct 2>&1)
+	echo -n $testfct "$@" ...
+	test_output=$($testfct "$@" 2>&1)
 
 	# Failure
 	if [ $? -gt 0 ] ; then
@@ -181,11 +182,14 @@ function test_branch_behind {
 ##############
 
 function test_fetch {
+
+	local flags=$1
+
 	clean_repos
 	mk_repos repos-orig a
 	run_git clone repos-orig repos-clone
 	modify_repos_file repos-orig a
-	$SCANREPOS -f repos-clone > fetch.output
+	$SCANREPOS $flags repos-clone > fetch.output
 	diff fetch.output branch_behind.output.ref >/dev/null
 }
 
@@ -194,11 +198,14 @@ function test_fetch {
 #############
 
 function test_pull {
+
+	local flags=$1
+
 	clean_repos
 	mk_repos repos-orig a
 	run_git clone repos-orig repos-clone
 	modify_repos_file repos-orig a
-	$SCANREPOS -b repos-clone > pull.output
+	$SCANREPOS $flags repos-clone > pull.output
 	diff pull.output pull.output.ref >/dev/null
 }
 
@@ -207,6 +214,9 @@ function test_pull {
 #############
 
 function test_push {
+
+	local flags=$1
+
 	clean_repos
 	mk_bare_repos repos-bare
 	mk_repos repos-orig a
@@ -215,7 +225,7 @@ function test_push {
 	run_git push -u origin master
 	cd ..
 	modify_repos_file repos-orig a
-	$SCANREPOS -a repos-orig > push.output
+	$SCANREPOS $flags repos-orig > push.output
 	diff push.output push.output.ref >/dev/null
 }
 
@@ -224,6 +234,8 @@ function test_push {
 ######################
 
 function test_push_conflict {
+
+	local flags=$1
 
 	# Create a bare repos and an orig repos
 	clean_repos
@@ -239,12 +251,12 @@ function test_push_conflict {
 
 	# Modify orig repos
 	modify_repos_file repos-orig a
-	$SCANREPOS -a repos-orig > push_conflict_orig.output
+	$SCANREPOS $flags repos-orig > push_conflict_orig.output
 	diff push_conflict_orig.output push.output.ref >/dev/null
 
 	# Modify clone repos and try to push
 	delete_repos_file repos-clone a
-	$SCANREPOS -a repos-clone >push_conflict_clone.output 2>&1
+	$SCANREPOS $flags repos-clone >push_conflict_clone.output 2>&1
 	diff push_conflict_clone.output push_conflict_clone.output.ref >/dev/null
 }
 
@@ -253,21 +265,69 @@ function test_push_conflict {
 ######################
 
 function test_unknown_option {
-	$SCANREPOS -z >unknown_option.output 2>&1
+
+	local flags=$1
+
+	$SCANREPOS $flags >unknown_option.output 2>&1
 	diff unknown_option.output unknown_option.output.ref >/dev/null
+}
+
+##################
+# TEST REPOSPATH #
+##################
+
+function test_repospath {
+
+	# Create a repository with a modified file
+	clean_repos
+	mk_repos repos-a a
+	echo "AAA" >> repos-a/a
+
+	# Outside repository
+	$SCANREPOS repos-a > repospath_outside.output
+	diff repospath_outside.output repospath_outside.output.ref >/dev/null
+
+	# Outside repository with environment variable set to repository folder
+	REPOSPATH=repos-a $SCANREPOS > repospath_outside_envvarrepos.output
+	diff repospath_outside_envvarrepos.output repospath_outside.output.ref >/dev/null
+
+	# Outside repository with environment variable set to relative current directory
+	REPOSPATH=. $SCANREPOS > repospath_outside_envvarrelcur.output
+	diff repospath_outside_envvarrelcur.output repospath_outside_envvarrelcur.output.ref >/dev/null
+
+	# Outside repository with environment variable unset
+	REPOSPATH= $SCANREPOS > repospath_outside_envvarunset.output
+	diff repospath_outside_envvarunset.output repospath_outside_envvarrelcur.output.ref >/dev/null
+
+	# Inside repository
+	cd repos-a
+	$SCANREPOS . > ../repospath_inside.output
+	cd ..
+	diff repospath_inside.output repospath_inside.output.ref >/dev/null
+
+	# Inside repository with environment variable unset
+	cd repos-a
+	REPOSPATH= $SCANREPOS > ../repospath_inside_envvarunset.output
+	cd ..
+	diff repospath_inside_envvarunset.output repospath_inside.output.ref >/dev/null
 }
 
 ########
 # MAIN #
 ########
 
-check test_unknown_option
+check test_unknown_option -z
 check test_modified_file
 check test_deleted_file
 check test_untracked_file
 check test_branch_ahead
 check test_branch_behind
-check test_fetch
-check test_pull
-check test_push
-check test_push_conflict
+check test_repospath
+check test_fetch -f
+check test_fetch --fetch
+check test_pull -b
+check test_pull --pull
+check test_push -a
+check test_push --push
+check test_push_conflict -a
+check test_push_conflict --push
