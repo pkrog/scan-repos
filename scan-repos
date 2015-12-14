@@ -96,8 +96,8 @@ function read_args {
 
 function print_debug_msg {
 
-	dbglvl=$1
-	dbgmsg=$2
+	local dbglvl=$1
+	local dbgmsg=$2
 
 	if [ $DEBUG -ge $dbglvl ] ; then
 		echo [DEBUG] $dbgmsg >&2
@@ -110,7 +110,7 @@ function print_debug_msg {
 
 function print_warning_msg {
 
-	warnmsg=$1
+	local warnmsg=$1
 
 	erase_progress_bar
 	echo $'\e[31m''[WARNING]'" $warnmsg"$'\e[0m' >&2
@@ -122,7 +122,7 @@ function print_warning_msg {
 
 function print_msg {
 
-	message=$1
+	local message=$1
 	
 	erase_progress_bar
 	echo $message
@@ -144,13 +144,13 @@ function erase_progress_bar {
 
 function print_progress_bar {
 
-	title=$1
-	done=$2
-	total=$3
-	keepbar=$4
-	barsize=32
-	filledsize=$((done*barsize/total))
-	percent=$((done*100/total))
+	local title=$1
+	local done=$2
+	local total=$3
+	local keepbar=$4
+	local barsize=32
+	local filledsize=$((done*barsize/total))
+	local percent=$((done*100/total))
 
 	if [ -n "$PROGRESS" ] ; then
 		# Build bar
@@ -186,9 +186,9 @@ function print_progress_bar {
 
 function fetch {
 
-	repospath=$1
-	prevdir=$(pwd)
-	quiet=--quiet
+	local repospath=$1
+	local prevdir=$(pwd)
+	local quiet=--quiet
 	if [ $DEBUG -ge 1 ] ; then quiet= ; fi
 
 	cd $repospath
@@ -207,10 +207,10 @@ function fetch {
 
 function fetch_all {
 
-	repos_list_file=$1
-	nb_rep=$(cat $repos_list_file | wc -l)
+	local repos_list_file=$1
+	local nb_rep=$(cat $repos_list_file | wc -l)
 
-	rep_index=1
+	local rep_index=1
 	for rep in $(cat $repos_list_file) ; do
 		print_progress_bar "Fetching" $rep_index $nb_rep
 		fetch $rep
@@ -224,8 +224,8 @@ function fetch_all {
 
 function list_repos {
 
-	path="$*"
-	prevdir=$(pwd)
+	local path="$*"
+	local prevdir=$(pwd)
 
 	for p in $path ; do
 		if [ -e "$p/.git" ] ; then
@@ -249,9 +249,9 @@ function list_repos {
 
 function scan {
 
-	repospath=$1
-	prevdir=$(pwd)
-	repos_status_file=$(mktemp -t reposstatus.XXXXXX)
+	local repospath=$1
+	local prevdir=$(pwd)
+	local repos_status_file=$(mktemp -t reposstatus.XXXXXX)
 
 	cd $repospath
 	print_debug_msg 1 "Scanning $repospath ..."
@@ -382,10 +382,10 @@ function scan {
 
 function scan_all {
 
-	repos_list_file=$1
-	nb_rep=$(cat $repos_list_file | wc -l)
+	local repos_list_file=$1
+	local nb_rep=$(cat $repos_list_file | wc -l)
 
-	rep_index=1
+	local rep_index=1
 	for rep in $(cat $repos_list_file) ; do
 		print_progress_bar "Scanning" $rep_index $nb_rep
 		scan $rep
