@@ -42,22 +42,38 @@ function print_help {
 	echo "   -s  Check also the states of submodules."
 }
 
+#########
+# ERROR #
+#########
+
+function error {
+
+	local msg=$1
+
+	echo "ERROR: $msg" >&2
+
+	exit 1
+}
+
 #############
 # READ ARGS #
 #############
 
 function read_args {
 
-	while getopts "abfghps" flag ; do
-		case $flag in
-			a) PUSH=1 ;;
-			b) PULL=1 ;;
-			f) FETCH=1 ;;
-			g) DEBUG=$((DEBUG + 1)) ;;
-			h) print_help ; exit 0 ;;
-			p) PROGRESS=1 ;;
-			s) SUBMODULES=1 ;;
+	while true ; do
+		case $1 in
+			-a) PUSH=1 ;;
+			-b) PULL=1 ;;
+			-f) FETCH=1 ;;
+			-g) DEBUG=$((DEBUG + 1)) ;;
+			-h) print_help ; exit 0 ;;
+			-p) PROGRESS=1 ;;
+			-s) SUBMODULES=1 ;;
+			-*) error "Unknown option $1." ;;
+			*) break
 		esac
+		shift
 	done
 	shift $((OPTIND - 1))
 

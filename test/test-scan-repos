@@ -246,13 +246,22 @@ function test_push_conflict {
 	delete_repos_file repos-clone a
 	$SCANREPOS -a repos-clone >push_conflict_clone.output 2>&1
 	diff push_conflict_clone.output push_conflict_clone.output.ref >/dev/null
+}
 
+######################
+# TEST PUSH CONFLICT #
+######################
+
+function test_unknown_option {
+	$SCANREPOS -z >unknown_option.output 2>&1
+	diff unknown_option.output unknown_option.output.ref >/dev/null
 }
 
 ########
 # MAIN #
 ########
 
+check test_unknown_option
 check test_modified_file
 check test_deleted_file
 check test_untracked_file
