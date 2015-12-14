@@ -63,13 +63,13 @@ function read_args {
 
 	while true ; do
 		case $1 in
-			-a) PUSH=1 ;;
-			-b) PULL=1 ;;
-			-f) FETCH=1 ;;
-			-g) DEBUG=$((DEBUG + 1)) ;;
-			-h) print_help ; exit 0 ;;
-			-p) PROGRESS=1 ;;
-			-s) SUBMODULES=1 ;;
+			-a|--push)          PUSH=1 ;;
+			-b|--pull)          PULL=1 ;;
+			-f|--fetch)         FETCH=1 ;;
+			-g|--debug)         DEBUG=$((DEBUG + 1)) ;;
+			-h|--help)          print_help ; exit 0 ;;
+			-p|--progress)      PROGRESS=1 ;;
+			-s|--submodules)    SUBMODULES=1 ;;
 			-*) error "Unknown option $1." ;;
 			*) break
 		esac
