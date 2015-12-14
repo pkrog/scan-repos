@@ -312,6 +312,32 @@ function test_repospath {
 	diff repospath_inside_envvarunset.output repospath_inside.output.ref >/dev/null
 }
 
+#############################
+# TEST MULTIPLE REPOS PATHS #
+#############################
+
+function test_multiple_repospaths {
+
+	# Create two repositories with modified files
+	clean_repos
+	mk_repos repos-a a
+	mk_repos repos-b b
+	echo "AAA" >> repos-a/a
+	echo "AAA" >> repos-b/b
+
+	# Using command line
+	$SCANREPOS repos-a:repos-b >multiple_repospaths.output
+	diff multiple_repospaths.output multiple_repospaths.output.ref >/dev/null
+
+	# Using environment variable
+	REPOSPATH=repos-a:repos-b $SCANREPOS >multiple_repospaths.output
+	diff multiple_repospaths.output multiple_repospaths.output.ref >/dev/null
+
+	# Using default current directory
+	REPOSPATH= $SCANREPOS >multiple_repospaths_curdir.output
+	diff multiple_repospaths_curdir.output multiple_repospaths_curdir.output.ref >/dev/null
+}
+
 ########
 # MAIN #
 ########
@@ -331,3 +357,4 @@ check test_push -a
 check test_push --push
 check test_push_conflict -a
 check test_push_conflict --push
+check test_multiple_repospaths

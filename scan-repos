@@ -224,23 +224,33 @@ function fetch_all {
 
 function list_repos {
 
-	local path="$*"
 	local prevdir=$(pwd)
 
-	for p in $path ; do
-		if [ -e "$p/.git" ] ; then
-			gitrepos=$p
+	# Use colon as separator
+	oldifs=$IFS
+	IFS=:
+
+	# Loop on all defined paths
+	for path in $REPOSPATH ; do
+
+		# Get repositories
+		if [ -e "$path/.git" ] ; then
+			repos="$path"
 		else
-			gitrepos=$(ls -d $p/*/.git | sed 's/\/\.git//g')
+			repos=$(ls -1d "$path"/*/.git | sed 's/\/\.git$//g' | tr "\n" ":")
 		fi
-		for repos in $gitrepos ; do
-			echo $repos
-			cd $repos
-			git submodule foreach true | sed "s/^Entering '\(.*\)'$/\1/" | sed s@^@$repos/@
+
+		# Loop on all repos
+		for rep in $repos ; do
+			echo $rep
+			cd $rep
+			git submodule foreach true | sed "s/^Entering '\(.*\)'$/\1/" | sed s@^@$rep/@
+			cd $prevdir
 		done
 	done
 
-	cd $prevdir
+	# Reset separator to old value
+	IFS=$oldifs
 }
 
 ########
@@ -403,7 +413,7 @@ repos_list_file=$(mktemp -t reposlist.XXXXXX)
 curdir=$(pwd)
 
 # List all repositories
-list_repos $REPOSPATH >$repos_list_file
+list_repos >$repos_list_file
 
 # Fetch
 if [ -n "$FETCH" -o -n "$PULL" ] ; then fetch_all $repos_list_file ; fi
