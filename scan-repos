@@ -31,19 +31,19 @@ PROGRESS=
 ##############
 
 function print_help {
-	echo "Usage: scan-repos [options] repositories"
+	echo "Usage: scan-repos [options] [repositories]"
 	echo
 	echo "Repositories are either real repositories or folders containing repositories."
 	echo "If no repositories are specified, then the value of the environment variable REPOSPATH is used if it is set. Otherwise the current directory is used."
 	echo
 	echo "Options:"
-	echo "   -a  Push repositories whose current branch is ahead."
-	echo "   -b  Pull repositories whose current branch is behind, and that have no modified files."
-	echo "   -f  Fetch repositories."
-	echo "   -g  Debug mode."
-	echo "   -h  Print this help message."
-	echo "   -p  Display progress bar."
-	echo "   -s  Check also the states of submodules."
+	echo "   -a, --push         Push repositories whose current branch is ahead."
+	echo "   -b, --pull         Pull repositories whose current branch is behind, and that have no modified files."
+	echo "   -f, --fetch        Fetch repositories."
+	echo "   -g, --debug        Debug mode."
+	echo "   -h, --help         Print this help message."
+	echo "   -p, --progress     Display progress bar."
+	echo "   -s, --submodules   Check also the states of submodules."
 }
 
 #########
