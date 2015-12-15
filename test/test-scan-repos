@@ -347,17 +347,23 @@ function test_space {
 	# Create arepository with a modified file
 	clean_repos
 	mk_repos "repos- a" a
+	mk_repos repos-a a
 	echo "AAA" >> "repos- a/a"
+	echo "AAA" >> repos-a/a
 
+	# One repository with a space character
 	$SCANREPOS "repos- a" > space.output 
 	diff space.output space.output.ref >/dev/null
+
+	# Two repositories with one with a space character
+	$SCANREPOS "repos- a" repos-a > space_2_repos.output 
+	diff space_2_repos.output space_2_repos.output.ref >/dev/null
 }
 
 ########
 # MAIN #
 ########
 
-check test_space
 check test_unknown_option -z
 check test_modified_file
 check test_deleted_file
@@ -374,3 +380,4 @@ check test_push --push
 check test_push_conflict -a
 check test_push_conflict --push
 check test_multiple_repospaths
+check test_space
