@@ -68,12 +68,12 @@ function mk_bare_repos {
 
 function mk_repos {
 
-	local repos=$1
-	local file=$2
+	local repos="$1"
+	local file="$2"
 
-	mkdir $repos
-	cd $repos
-	touch $file
+	mkdir "$repos"
+	cd "$repos"
+	touch "$file"
 	run_git init
 	run_git add .
 	run_git commit -m "Init."
@@ -338,10 +338,26 @@ function test_multiple_repospaths {
 	diff multiple_repospaths_curdir.output multiple_repospaths_curdir.output.ref >/dev/null
 }
 
+##############
+# TEST SPACE #
+##############
+
+function test_space {
+
+	# Create arepository with a modified file
+	clean_repos
+	mk_repos "repos- a" a
+	echo "AAA" >> "repos- a/a"
+
+	$SCANREPOS "repos- a" > space.output 
+	diff space.output space.output.ref >/dev/null
+}
+
 ########
 # MAIN #
 ########
 
+check test_space
 check test_unknown_option -z
 check test_modified_file
 check test_deleted_file

@@ -26,6 +26,8 @@ PUSH=
 SUBMODULES=
 PROGRESS=
 
+declare -a REPOS
+
 ##############
 # PRINT HELP #
 ##############
@@ -207,14 +209,11 @@ function fetch {
 
 function fetch_all {
 
-	local repos_list_file=$1
-	local nb_rep=$(cat $repos_list_file | wc -l)
-
-	local rep_index=1
-	for rep in $(cat $repos_list_file) ; do
-		print_progress_bar "Fetching" $rep_index $nb_rep
+	local -i i=1
+	for rep in "${REPOS[@]}" ; do
+		print_progress_bar "Fetching" $i ${#REPOS[@]}
 		fetch $rep
-		((rep_index=rep_index+1))
+		i+=1
 	done
 }
 
@@ -242,7 +241,7 @@ function list_repos {
 
 		# Loop on all repos
 		for rep in $repos ; do
-			echo $rep
+			REPOS+=("$rep")
 			cd $rep
 			git submodule foreach true | sed "s/^Entering '\(.*\)'$/\1/" | sed s@^@$rep/@
 			cd $prevdir
@@ -259,11 +258,11 @@ function list_repos {
 
 function scan {
 
-	local repospath=$1
+	local repospath="$1"
 	local prevdir=$(pwd)
 	local repos_status_file=$(mktemp -t reposstatus.XXXXXX)
 
-	cd $repospath
+	cd "$repospath"
 	print_debug_msg 1 "Scanning $repospath ..."
 
 	# Read repository's status
@@ -392,14 +391,11 @@ function scan {
 
 function scan_all {
 
-	local repos_list_file=$1
-	local nb_rep=$(cat $repos_list_file | wc -l)
-
-	local rep_index=1
-	for rep in $(cat $repos_list_file) ; do
-		print_progress_bar "Scanning" $rep_index $nb_rep
-		scan $rep
-		((rep_index=rep_index+1))
+	local -i i=1
+	for rep in "${REPOS[@]}" ; do
+		print_progress_bar "Scanning" $i ${#REPOS[@]}
+		scan "$rep"
+		i+=1
 	done
 }
 
@@ -409,14 +405,11 @@ function scan_all {
 
 read_args "$@"
 
-repos_list_file=$(mktemp -t reposlist.XXXXXX)
-curdir=$(pwd)
-
 # List all repositories
-list_repos >$repos_list_file
+list_repos
 
 # Fetch
-if [ -n "$FETCH" -o -n "$PULL" ] ; then fetch_all $repos_list_file ; fi
+if [ -n "$FETCH" -o -n "$PULL" ] ; then fetch_all ; fi
 
 # Scan
-scan_all $repos_list_file
+scan_all
