@@ -84,11 +84,22 @@ function read_args {
 	done
 	shift $((OPTIND - 1))
 
-	# Read left arguments as list of repositories
+	# Read reamaining arguments as a list of repositories
 	if [ -n "$*" ] ; then
-		REPOSPATH="$*" # Replace any value of REPOSPATH with current specified list of repositories
-	elif [ -z "$REPOSPATH" ] ; then
-		REPOSPATH=. # Use current directory
+		REPOS=("$@") # Replace any value of REPOSPATH with current specified list of repositories
+
+	# Use value of REPOSPATH environment variable
+	elif [ -n "$REPOSPATH" ] ; then
+		oldifs=$IFS
+		IFS=:
+		for path in $REPOSPATH ; do
+			REPOS+=("$path")
+		done
+		IFS=$oldifs
+
+	# Use current directory
+	else
+		REPOS=(".")
 	fi
 }
 
@@ -223,33 +234,30 @@ function fetch_all {
 
 function list_repos {
 
-	local prevdir=$(pwd)
-
-	# Use colon as separator
-	oldifs=$IFS
-	IFS=:
+	local -a tmprepos
 
 	# Loop on all defined paths
-	for path in $REPOSPATH ; do
+	for path in "${REPOS[@]}" ; do
 
 		# Get repositories
 		if [ -e "$path/.git" ] ; then
-			repos="$path"
+			tmprepos+=("$path")
 		else
-			repos=$(ls -1d "$path"/*/.git | sed 's/\/\.git$//g' | tr "\n" ":")
+			local list_repos_file=$(mktemp -t listrepos.XXXXXX)
+			ls -1d "$path"/*/.git | sed 's/\/\.git$//g' > $list_repos_file
+			while read rep ; do
+				tmprepos+=("$rep")
+			done < $list_repos_file
 		fi
 
-		# Loop on all repos
-		for rep in $repos ; do
-			REPOS+=("$rep")
-			cd $rep
-			git submodule foreach true | sed "s/^Entering '\(.*\)'$/\1/" | sed s@^@$rep/@
-			cd $prevdir
-		done
+# XXX What does this thing ?
+#	local prevdir=$(pwd)
+#			cd $rep
+#			git submodule foreach true | sed "s/^Entering '\(.*\)'$/\1/" | sed s@^@$rep/@
+#			cd $prevdir
 	done
 
-	# Reset separator to old value
-	IFS=$oldifs
+	REPOS=("${tmprepos[@]}")
 }
 
 ########

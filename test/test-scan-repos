@@ -326,7 +326,7 @@ function test_multiple_repospaths {
 	echo "AAA" >> repos-b/b
 
 	# Using command line
-	$SCANREPOS repos-a:repos-b >multiple_repospaths.output
+	$SCANREPOS repos-a repos-b >multiple_repospaths.output
 	diff multiple_repospaths.output multiple_repospaths.output.ref >/dev/null
 
 	# Using environment variable
