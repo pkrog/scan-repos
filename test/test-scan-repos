@@ -360,6 +360,32 @@ function test_space {
 	diff space_2_repos.output space_2_repos.output.ref >/dev/null
 }
 
+###################
+# TEST SUBMODULES #
+###################
+
+function test_submodules {
+
+	# Create two repositories
+	clean_repos
+	mk_repos repos-a a
+	mk_repos repos-b b
+	modify_repos_file repos-a a
+
+	# Add one repository as submodule of the other
+	cd repos-b
+	run_git submodule add ../repos-a
+	run_git commit -m "Add submodule."
+	echo "AAA" >> repos-a/a
+	cd ..
+
+	$SCANREPOS "repos-b" > submodules.output
+	diff submodules.output submodules.output.ref >/dev/null
+
+	$SCANREPOS -s "repos-b" > submodules_with_state_in_super.output
+	diff submodules_with_state_in_super.output submodules_with_state_in_super.output.ref >/dev/null
+}
+
 ########
 # MAIN #
 ########
@@ -381,3 +407,4 @@ check test_push_conflict -a
 check test_push_conflict --push
 check test_multiple_repospaths
 check test_space
+check test_submodules

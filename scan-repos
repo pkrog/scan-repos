@@ -228,11 +228,11 @@ function fetch_all {
 	done
 }
 
-##############
-# LIST REPOS #
-##############
+#######################
+# RESOLVE REPOS PATHS #
+#######################
 
-function list_repos {
+function resolve_repos_paths {
 
 	local -a tmprepos
 
@@ -248,13 +248,8 @@ function list_repos {
 			while read rep ; do
 				tmprepos+=("$rep")
 			done < $list_repos_file
+			rm $list_repos_file
 		fi
-
-# XXX What does this thing ?
-#	local prevdir=$(pwd)
-#			cd $rep
-#			git submodule foreach true | sed "s/^Entering '\(.*\)'$/\1/" | sed s@^@$rep/@
-#			cd $prevdir
 	done
 
 	REPOS=("${tmprepos[@]}")
@@ -407,6 +402,32 @@ function scan_all {
 	done
 }
 
+###################
+# LIST SUBMODULES #
+###################
+
+function list_submodules {
+
+	local origdir=$(pwd)
+	local -a tmprepos
+
+	# Loop on all defined paths
+	for rep in "${REPOS[@]}" ; do
+
+		tmprepos+=("$rep")
+		cd "$rep"
+		local list_submodules_file=$(mktemp -t listrepos.XXXXXX)
+		git submodule status | sed 's/^ [0-9a-f]* \(.*\) (.*)$/\1/' > $list_submodules_file
+		cd $OLDPWD
+		while read subrep ; do
+			tmprepos+=("$rep/$subrep")
+		done < $list_submodules_file
+		rm $list_submodules_file
+	done
+
+	REPOS=("${tmprepos[@]}")
+}
+
 ########
 # MAIN #
 ########
@@ -414,7 +435,8 @@ function scan_all {
 read_args "$@"
 
 # List all repositories
-list_repos
+resolve_repos_paths
+list_submodules
 
 # Fetch
 if [ -n "$FETCH" -o -n "$PULL" ] ; then fetch_all ; fi
