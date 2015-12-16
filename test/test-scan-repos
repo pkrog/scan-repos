@@ -379,17 +379,22 @@ function test_submodules {
 	echo "AAA" >> repos-a/a
 	cd ..
 
-	$SCANREPOS "repos-b" > submodules.output
+	$SCANREPOS repos-b > submodules.output
 	diff submodules.output submodules.output.ref >/dev/null
 
-	$SCANREPOS -s "repos-b" > submodules_with_state_in_super.output
+	$SCANREPOS -s repos-b > submodules_with_state_in_super.output
 	diff submodules_with_state_in_super.output submodules_with_state_in_super.output.ref >/dev/null
+
+	run_git clone repos-b repos-clone-b
+	$SCANREPOS repos-clone-b > submodules_noinit.output
+	diff submodules_noinit.output submodules_noinit.output.ref >/dev/null
 }
 
 ########
 # MAIN #
 ########
 
+check test_submodules
 check test_unknown_option -z
 check test_modified_file
 check test_deleted_file
@@ -407,4 +412,3 @@ check test_push_conflict -a
 check test_push_conflict --push
 check test_multiple_repospaths
 check test_space
-check test_submodules

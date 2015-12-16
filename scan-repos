@@ -417,7 +417,7 @@ function list_submodules {
 		tmprepos+=("$rep")
 		cd "$rep"
 		local list_submodules_file=$(mktemp -t listrepos.XXXXXX)
-		git submodule status | sed 's/^ [0-9a-f]* \(.*\) (.*)$/\1/' > $list_submodules_file
+		git submodule status | sed 's/^.[0-9a-f]* //' | sed 's/ \(.*\)$//' > $list_submodules_file
 		cd $OLDPWD
 		while read subrep ; do
 			tmprepos+=("$rep/$subrep")
