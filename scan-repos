@@ -167,7 +167,8 @@ function print_progress_bar {
 
 	if [ -n "$PROGRESS" ] ; then
 		# Build bar
-		bar=
+		local bar=
+		local i=
 		for((i=0;i<barsize;++i)) ; do
 			if [ $i -lt $filledsize ] ; then
 				bar="$bar#"
