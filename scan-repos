@@ -14,6 +14,7 @@
 ((MODIFIED_SUBMODULES   = 1 << 6))
 ((BRANCH_DIVERGED       = 1 << 7))
 ((DELETED_FILES         = 1 << 8))
+((DETACHED_HEAD         = 1 << 9))
 
 ####################
 # GLOBAL VARIABLES #
@@ -25,6 +26,7 @@ PULL=
 PUSH=
 SUBMODULES=
 PROGRESS=
+DETACHED=
 
 declare -a REPOS
 
@@ -41,6 +43,7 @@ function print_help {
 	echo "Options:"
 	echo "   -a, --push         Push repositories whose current branch is ahead."
 	echo "   -b, --pull         Pull repositories whose current branch is behind, and that have no modified files."
+	echo "   -d, --detached     Display repositories whose HEAD is detached."
 	echo "   -f, --fetch        Fetch repositories."
 	echo "   -g, --debug        Debug mode."
 	echo "   -h, --help         Print this help message."
@@ -72,6 +75,7 @@ function read_args {
 		case $1 in
 			-a|--push)          PUSH=1 ;;
 			-b|--pull)          PULL=1 ;;
+			-d|--detached)      DETACHED=1 ;;
 			-f|--fetch)         FETCH=1 ;;
 			-g|--debug)         DEBUG=$((DEBUG + 1)) ;;
 			-h|--help)          print_help ; exit 0 ;;
@@ -283,6 +287,11 @@ function scan {
 			# Debug output
 			print_debug_msg 2 "STATUS: $line"
 
+			# Detached head
+			if [ -n "$(echo $line | grep '^HEAD detached')" ] ; then
+				((status = status | DETACHED_HEAD))
+			fi
+
 			# Untracked files
 			if [ -n "$(echo $line | grep '^Untracked files:')" ] ; then
 				((status = status | UNTRACKED_FILES))
@@ -344,44 +353,48 @@ function scan {
 		fi
 
 		# Print message
-		if [ "$status" -ne 0 ] ; then
-			msg=
-			if [ $((status & BRANCH_DIVERGED)) -ne 0 ] ; then
-				if [ -n "$msg" ] ; then msg="$msg, " ; fi
-				msg=$msg$'\e[36m''branch has diverged'$'\e[0m'
-			fi
-			if [ $((status & BRANCH_BEHIND)) -ne 0 ] ; then
-				if [ -n "$msg" ] ; then msg="$msg, " ; fi
-				msg=$msg$'\e[32m''branch is behind'$'\e[0m'
-			fi
-			if [ $((status & BRANCH_PULLED)) -ne 0 ] ; then
-				if [ -n "$msg" ] ; then msg="$msg, " ; fi
-				msg=$msg$'\e[1;32m''branch has been pulled'$'\e[0m'
-			fi
-			if [ $((status & BRANCH_AHEAD)) -ne 0 ] ; then
-				if [ -n "$msg" ] ; then msg="$msg, " ; fi
-				msg=$msg$'\e[34m''branch is ahead'$'\e[0m'
-			fi
-			if [ $((status & BRANCH_PUSHED)) -ne 0 ] ; then
-				if [ -n "$msg" ] ; then msg="$msg, " ; fi
-				msg=$msg$'\e[1;34m''branch has been pushed'$'\e[0m'
-			fi
-			if [ $((status & UNTRACKED_FILES)) -ne 0 ] ; then
-				if [ -n "$msg" ] ; then msg="$msg, " ; fi
-				msg=$msg$'\e[33m''untracked files'$'\e[0m'
-			fi
-			if [ $((status & MODIFIED_FILES)) -ne 0 ] ; then
-				if [ -n "$msg" ] ; then msg="$msg, " ; fi
-				msg=$msg$'\e[31m''modified files'$'\e[0m'
-			fi
-			if [ $((status & DELETED_FILES)) -ne 0 ] ; then
-				if [ -n "$msg" ] ; then msg="$msg, " ; fi
-				msg=$msg$'\e[1;31m''deleted files'$'\e[0m'
-			fi
-			if [ $((status & MODIFIED_SUBMODULES)) -ne 0 ] ; then
-				if [ -n "$msg" ] ; then msg="$msg, " ; fi
-				msg=$msg$'\e[35m''modified submodules'$'\e[0m'
-			fi
+		msg=
+		if [ $((status & BRANCH_DIVERGED)) -ne 0 ] ; then
+			if [ -n "$msg" ] ; then msg="$msg, " ; fi
+			msg=$msg$'\e[36m''branch has diverged'$'\e[0m'
+		fi
+		if [ $((status & BRANCH_BEHIND)) -ne 0 ] ; then
+			if [ -n "$msg" ] ; then msg="$msg, " ; fi
+			msg=$msg$'\e[32m''branch is behind'$'\e[0m'
+		fi
+		if [ $((status & BRANCH_PULLED)) -ne 0 ] ; then
+			if [ -n "$msg" ] ; then msg="$msg, " ; fi
+			msg=$msg$'\e[1;32m''branch has been pulled'$'\e[0m'
+		fi
+		if [ $((status & BRANCH_AHEAD)) -ne 0 ] ; then
+			if [ -n "$msg" ] ; then msg="$msg, " ; fi
+			msg=$msg$'\e[34m''branch is ahead'$'\e[0m'
+		fi
+		if [ $((status & BRANCH_PUSHED)) -ne 0 ] ; then
+			if [ -n "$msg" ] ; then msg="$msg, " ; fi
+			msg=$msg$'\e[1;34m''branch has been pushed'$'\e[0m'
+		fi
+		if [ $((status & UNTRACKED_FILES)) -ne 0 ] ; then
+			if [ -n "$msg" ] ; then msg="$msg, " ; fi
+			msg=$msg$'\e[33m''untracked files'$'\e[0m'
+		fi
+		if [ $((status & MODIFIED_FILES)) -ne 0 ] ; then
+			if [ -n "$msg" ] ; then msg="$msg, " ; fi
+			msg=$msg$'\e[31m''modified files'$'\e[0m'
+		fi
+		if [ $((status & DELETED_FILES)) -ne 0 ] ; then
+			if [ -n "$msg" ] ; then msg="$msg, " ; fi
+			msg=$msg$'\e[1;31m''deleted files'$'\e[0m'
+		fi
+		if [ $((status & MODIFIED_SUBMODULES)) -ne 0 ] ; then
+			if [ -n "$msg" ] ; then msg="$msg, " ; fi
+			msg=$msg$'\e[35m''modified submodules'$'\e[0m'
+		fi
+		if [ -n "$DETACHED" -a $((status & DETACHED_HEAD)) -ne 0 ] ; then
+			if [ -n "$msg" ] ; then msg="$msg, " ; fi
+			msg=$msg$'\e[1;31m''detached head'$'\e[0m'
+		fi
+		if [ -n "$msg" ] ; then
 			print_msg "$repospath: ${msg}."
 		fi
 	fi

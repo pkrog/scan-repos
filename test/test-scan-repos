@@ -385,8 +385,8 @@ function test_submodules {
 	$SCANREPOS -s repos-b > submodules_with_state_in_super.output
 	diff submodules_with_state_in_super.output submodules_with_state_in_super.output.ref >/dev/null
 
-	run_git clone repos-b repos-clone-b
-	$SCANREPOS repos-clone-b > submodules_noinit.output
+	run_git clone --recursive repos-b repos-clone-b
+	$SCANREPOS -d repos-clone-b > submodules_noinit.output
 	diff submodules_noinit.output submodules_noinit.output.ref >/dev/null
 }
 
