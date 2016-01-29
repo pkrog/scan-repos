@@ -49,6 +49,18 @@ function check_same {
 	return 0
 }
 
+##################
+# RUN SCAN-REPOS #
+##################
+
+function run_scanrepos {
+
+	local output_filename=$1
+	shift
+
+	$SCANREPOS "$@" >$output_filename.output 2>&1
+}
+
 ###########
 # RUN GIT #
 ###########
@@ -138,7 +150,7 @@ function test_modified_file {
 	clean_repos
 	mk_repos repos-a a
 	echo "AAA" >> repos-a/a
-	$SCANREPOS repos-a > modified_file.output
+	run_scanrepos modified_file repos-a || return 1
 	check_same modified_file.output modified_file.output.ref || return 1
 }
 
@@ -150,7 +162,7 @@ function test_deleted_file {
 	clean_repos
 	mk_repos repos-a a
 	rm repos-a/a
-	$SCANREPOS repos-a > deleted_file.output
+	run_scanrepos deleted_file repos-a || return 1
 	check_same deleted_file.output deleted_file.output.ref || return 1
 }
 
@@ -162,7 +174,7 @@ function test_untracked_file {
 	clean_repos
 	mk_repos repos-a a
 	touch repos-a/some_untracked_file.txt
-	$SCANREPOS repos-a > untracked_file.output
+	run_scanrepos untracked_file repos-a || return 1
 	check_same untracked_file.output untracked_file.output.ref || return 1
 }
 
@@ -175,7 +187,7 @@ function test_branch_ahead {
 	mk_repos repos-orig a
 	run_git clone repos-orig repos-clone
 	modify_repos_file repos-clone a
-	$SCANREPOS repos-clone > branch_ahead.output
+	run_scanrepos branch_ahead repos-clone || return 1
 	check_same branch_ahead.output branch_ahead.output.ref || return 1
 }
 
@@ -191,7 +203,7 @@ function test_branch_behind {
 	cd repos-clone
 	run_git fetch
 	cd ..
-	$SCANREPOS repos-clone > branch_behind.output
+	run_scanrepos branch_behind repos-clone || return 1
 	check_same branch_behind.output branch_behind.output.ref || return 1
 }
 
@@ -207,7 +219,7 @@ function test_fetch {
 	mk_repos repos-orig a
 	run_git clone repos-orig repos-clone
 	modify_repos_file repos-orig a
-	$SCANREPOS $flags repos-clone > fetch.output
+	run_scanrepos fetch $flags repos-clone || return 1
 	check_same fetch.output branch_behind.output.ref || return 1
 }
 
@@ -223,7 +235,7 @@ function test_pull {
 	mk_repos repos-orig a
 	run_git clone repos-orig repos-clone
 	modify_repos_file repos-orig a
-	$SCANREPOS $flags repos-clone > pull.output
+	run_scanrepos pull $flags repos-clone || return 1
 	check_same pull.output pull.output.ref || return 1
 }
 
@@ -243,7 +255,7 @@ function test_push {
 	run_git push -u origin master
 	cd ..
 	modify_repos_file repos-orig a
-	$SCANREPOS $flags repos-orig > push.output
+	run_scanrepos push $flags repos-orig || return 1
 	check_same push.output push.output.ref || return 1
 }
 
@@ -269,12 +281,12 @@ function test_push_conflict {
 
 	# Modify orig repos
 	modify_repos_file repos-orig a
-	$SCANREPOS $flags repos-orig > push_conflict_orig.output
+	run_scanrepos push_conflict_orig $flags repos-orig || return 1
 	check_same push_conflict_orig.output push.output.ref || return 1
 
 	# Modify clone repos and try to push
 	delete_repos_file repos-clone a
-	$SCANREPOS $flags repos-clone >push_conflict_clone.output 2>&1
+	run_scanrepos push_conflict_clone $flags repos-clone || return 1
 	check_same push_conflict_clone.output push_conflict_clone.output.ref || return 1
 }
 
@@ -286,7 +298,7 @@ function test_unknown_option {
 
 	local flags=$1
 
-	$SCANREPOS $flags >unknown_option.output 2>&1
+	! run_scanrepos unknown_option $flags || return 1
 	check_same unknown_option.output unknown_option.output.ref || return 1
 }
 
@@ -302,30 +314,30 @@ function test_repospath {
 	echo "AAA" >> repos-a/a
 
 	# Outside repository
-	$SCANREPOS repos-a > repospath_outside.output
+	run_scanrepos repospath_outside repos-a || return 1
 	check_same repospath_outside.output repospath_outside.output.ref || return 1
 
 	# Outside repository with environment variable set to repository folder
-	REPOSPATH=repos-a $SCANREPOS > repospath_outside_envvarrepos.output
+	REPOSPATH=repos-a run_scanrepos repospath_outside_envvarrepos  || return 1
 	check_same repospath_outside_envvarrepos.output repospath_outside.output.ref || return 1
 
 	# Outside repository with environment variable set to relative current directory
-	REPOSPATH=. $SCANREPOS > repospath_outside_envvarrelcur.output
+	REPOSPATH=. run_scanrepos repospath_outside_envvarrelcur  || return 1
 	check_same repospath_outside_envvarrelcur.output repospath_outside_envvarrelcur.output.ref || return 1
 
 	# Outside repository with environment variable unset
-	REPOSPATH= $SCANREPOS > repospath_outside_envvarunset.output
+	REPOSPATH= run_scanrepos repospath_outside_envvarunset  || return 1
 	check_same repospath_outside_envvarunset.output repospath_outside_envvarrelcur.output.ref || return 1
 
 	# Inside repository
 	cd repos-a
-	$SCANREPOS . > ../repospath_inside.output
+	run_scanrepos ../repospath_inside . || return 1
 	cd ..
 	check_same repospath_inside.output repospath_inside.output.ref || return 1
 
 	# Inside repository with environment variable unset
 	cd repos-a
-	REPOSPATH= $SCANREPOS > ../repospath_inside_envvarunset.output
+	REPOSPATH= run_scanrepos ../repospath_inside_envvarunset  || return 1
 	cd ..
 	check_same repospath_inside_envvarunset.output repospath_inside.output.ref || return 1
 }
@@ -344,15 +356,15 @@ function test_multiple_repospaths {
 	echo "AAA" >> repos-b/b
 
 	# Using command line
-	$SCANREPOS repos-a repos-b >multiple_repospaths.output
+	run_scanrepos multiple_repospaths repos-a repos-b  || return 1
 	check_same multiple_repospaths.output multiple_repospaths.output.ref || return 1
 
 	# Using environment variable
-	REPOSPATH=repos-a:repos-b $SCANREPOS >multiple_repospaths.output
+	REPOSPATH=repos-a:repos-b run_scanrepos multiple_repospaths  || return 1
 	check_same multiple_repospaths.output multiple_repospaths.output.ref || return 1
 
 	# Using default current directory
-	REPOSPATH= $SCANREPOS >multiple_repospaths_curdir.output
+	REPOSPATH= run_scanrepos multiple_repospaths_curdir  || return 1
 	check_same multiple_repospaths_curdir.output multiple_repospaths_curdir.output.ref || return 1
 }
 
@@ -370,11 +382,11 @@ function test_space {
 	echo "AAA" >> repos-a/a
 
 	# One repository with a space character
-	$SCANREPOS "repos- a" > space.output 
+	run_scanrepos space "repos- a"  || return 1
 	check_same space.output space.output.ref || return 1
 
 	# Two repositories with one with a space character
-	$SCANREPOS "repos- a" repos-a > space_2_repos.output 
+	run_scanrepos space_2_repos "repos- a" repos-a  || return 1
 	check_same space_2_repos.output space_2_repos.output.ref || return 1
 }
 
@@ -397,14 +409,14 @@ function test_submodules {
 	echo "AAA" >> repos-a/a
 	cd ..
 
-	$SCANREPOS repos-b > submodules.output
+	run_scanrepos submodules repos-b || return 1
 	check_same submodules.output submodules.output.ref || return 1
 
-	$SCANREPOS -s repos-b > submodules_with_state_in_super.output
+	run_scanrepos submodules_with_state_in_super -s repos-b || return 1
 	check_same submodules_with_state_in_super.output submodules_with_state_in_super.output.ref || return 1
 
 	run_git clone --recursive repos-b repos-clone-b
-	$SCANREPOS -d repos-clone-b > submodules_noinit.output
+	run_scanrepos submodules_noinit -d repos-clone-b || return 1
 	check_same submodules_noinit.output submodules_noinit.output.ref || return 1
 }
 
