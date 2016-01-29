@@ -31,6 +31,24 @@ function check {
 	echo success. 
 }
 
+##############
+# CHECK SAME #
+##############
+
+# Checks that two files have the same containt
+function check_same {
+
+	local file1=$1
+	local file2=$2
+
+	if ! diff $file1 $file2 >/dev/null ; then
+		echo "Files $file1 and $file2 are different."
+		return 1
+	fi
+
+	return 0
+}
+
 ###########
 # RUN GIT #
 ###########
@@ -121,7 +139,7 @@ function test_modified_file {
 	mk_repos repos-a a
 	echo "AAA" >> repos-a/a
 	$SCANREPOS repos-a > modified_file.output
-	diff modified_file.output modified_file.output.ref >/dev/null
+	check_same modified_file.output modified_file.output.ref || return 1
 }
 
 #####################
@@ -133,7 +151,7 @@ function test_deleted_file {
 	mk_repos repos-a a
 	rm repos-a/a
 	$SCANREPOS repos-a > deleted_file.output
-	diff deleted_file.output deleted_file.output.ref >/dev/null
+	check_same deleted_file.output deleted_file.output.ref || return 1
 }
 
 #######################
@@ -145,7 +163,7 @@ function test_untracked_file {
 	mk_repos repos-a a
 	touch repos-a/some_untracked_file.txt
 	$SCANREPOS repos-a > untracked_file.output
-	diff untracked_file.output untracked_file.output.ref >/dev/null
+	check_same untracked_file.output untracked_file.output.ref || return 1
 }
 
 #####################
@@ -158,7 +176,7 @@ function test_branch_ahead {
 	run_git clone repos-orig repos-clone
 	modify_repos_file repos-clone a
 	$SCANREPOS repos-clone > branch_ahead.output
-	diff branch_ahead.output branch_ahead.output.ref >/dev/null
+	check_same branch_ahead.output branch_ahead.output.ref || return 1
 }
 
 ######################
@@ -174,7 +192,7 @@ function test_branch_behind {
 	run_git fetch
 	cd ..
 	$SCANREPOS repos-clone > branch_behind.output
-	diff branch_behind.output branch_behind.output.ref >/dev/null
+	check_same branch_behind.output branch_behind.output.ref || return 1
 }
 
 ##############
@@ -190,7 +208,7 @@ function test_fetch {
 	run_git clone repos-orig repos-clone
 	modify_repos_file repos-orig a
 	$SCANREPOS $flags repos-clone > fetch.output
-	diff fetch.output branch_behind.output.ref >/dev/null
+	check_same fetch.output branch_behind.output.ref || return 1
 }
 
 #############
@@ -206,7 +224,7 @@ function test_pull {
 	run_git clone repos-orig repos-clone
 	modify_repos_file repos-orig a
 	$SCANREPOS $flags repos-clone > pull.output
-	diff pull.output pull.output.ref >/dev/null
+	check_same pull.output pull.output.ref || return 1
 }
 
 #############
@@ -226,7 +244,7 @@ function test_push {
 	cd ..
 	modify_repos_file repos-orig a
 	$SCANREPOS $flags repos-orig > push.output
-	diff push.output push.output.ref >/dev/null
+	check_same push.output push.output.ref || return 1
 }
 
 ######################
@@ -252,12 +270,12 @@ function test_push_conflict {
 	# Modify orig repos
 	modify_repos_file repos-orig a
 	$SCANREPOS $flags repos-orig > push_conflict_orig.output
-	diff push_conflict_orig.output push.output.ref >/dev/null
+	check_same push_conflict_orig.output push.output.ref || return 1
 
 	# Modify clone repos and try to push
 	delete_repos_file repos-clone a
 	$SCANREPOS $flags repos-clone >push_conflict_clone.output 2>&1
-	diff push_conflict_clone.output push_conflict_clone.output.ref >/dev/null
+	check_same push_conflict_clone.output push_conflict_clone.output.ref || return 1
 }
 
 ######################
@@ -269,7 +287,7 @@ function test_unknown_option {
 	local flags=$1
 
 	$SCANREPOS $flags >unknown_option.output 2>&1
-	diff unknown_option.output unknown_option.output.ref >/dev/null
+	check_same unknown_option.output unknown_option.output.ref || return 1
 }
 
 ##################
@@ -285,31 +303,31 @@ function test_repospath {
 
 	# Outside repository
 	$SCANREPOS repos-a > repospath_outside.output
-	diff repospath_outside.output repospath_outside.output.ref >/dev/null
+	check_same repospath_outside.output repospath_outside.output.ref || return 1
 
 	# Outside repository with environment variable set to repository folder
 	REPOSPATH=repos-a $SCANREPOS > repospath_outside_envvarrepos.output
-	diff repospath_outside_envvarrepos.output repospath_outside.output.ref >/dev/null
+	check_same repospath_outside_envvarrepos.output repospath_outside.output.ref || return 1
 
 	# Outside repository with environment variable set to relative current directory
 	REPOSPATH=. $SCANREPOS > repospath_outside_envvarrelcur.output
-	diff repospath_outside_envvarrelcur.output repospath_outside_envvarrelcur.output.ref >/dev/null
+	check_same repospath_outside_envvarrelcur.output repospath_outside_envvarrelcur.output.ref || return 1
 
 	# Outside repository with environment variable unset
 	REPOSPATH= $SCANREPOS > repospath_outside_envvarunset.output
-	diff repospath_outside_envvarunset.output repospath_outside_envvarrelcur.output.ref >/dev/null
+	check_same repospath_outside_envvarunset.output repospath_outside_envvarrelcur.output.ref || return 1
 
 	# Inside repository
 	cd repos-a
 	$SCANREPOS . > ../repospath_inside.output
 	cd ..
-	diff repospath_inside.output repospath_inside.output.ref >/dev/null
+	check_same repospath_inside.output repospath_inside.output.ref || return 1
 
 	# Inside repository with environment variable unset
 	cd repos-a
 	REPOSPATH= $SCANREPOS > ../repospath_inside_envvarunset.output
 	cd ..
-	diff repospath_inside_envvarunset.output repospath_inside.output.ref >/dev/null
+	check_same repospath_inside_envvarunset.output repospath_inside.output.ref || return 1
 }
 
 #############################
@@ -327,15 +345,15 @@ function test_multiple_repospaths {
 
 	# Using command line
 	$SCANREPOS repos-a repos-b >multiple_repospaths.output
-	diff multiple_repospaths.output multiple_repospaths.output.ref >/dev/null
+	check_same multiple_repospaths.output multiple_repospaths.output.ref || return 1
 
 	# Using environment variable
 	REPOSPATH=repos-a:repos-b $SCANREPOS >multiple_repospaths.output
-	diff multiple_repospaths.output multiple_repospaths.output.ref >/dev/null
+	check_same multiple_repospaths.output multiple_repospaths.output.ref || return 1
 
 	# Using default current directory
 	REPOSPATH= $SCANREPOS >multiple_repospaths_curdir.output
-	diff multiple_repospaths_curdir.output multiple_repospaths_curdir.output.ref >/dev/null
+	check_same multiple_repospaths_curdir.output multiple_repospaths_curdir.output.ref || return 1
 }
 
 ##############
@@ -353,11 +371,11 @@ function test_space {
 
 	# One repository with a space character
 	$SCANREPOS "repos- a" > space.output 
-	diff space.output space.output.ref >/dev/null
+	check_same space.output space.output.ref || return 1
 
 	# Two repositories with one with a space character
 	$SCANREPOS "repos- a" repos-a > space_2_repos.output 
-	diff space_2_repos.output space_2_repos.output.ref >/dev/null
+	check_same space_2_repos.output space_2_repos.output.ref || return 1
 }
 
 ###################
@@ -380,14 +398,14 @@ function test_submodules {
 	cd ..
 
 	$SCANREPOS repos-b > submodules.output
-	diff submodules.output submodules.output.ref >/dev/null
+	check_same submodules.output submodules.output.ref || return 1
 
 	$SCANREPOS -s repos-b > submodules_with_state_in_super.output
-	diff submodules_with_state_in_super.output submodules_with_state_in_super.output.ref >/dev/null
+	check_same submodules_with_state_in_super.output submodules_with_state_in_super.output.ref || return 1
 
 	run_git clone --recursive repos-b repos-clone-b
 	$SCANREPOS -d repos-clone-b > submodules_noinit.output
-	diff submodules_noinit.output submodules_noinit.output.ref >/dev/null
+	check_same submodules_noinit.output submodules_noinit.output.ref || return 1
 }
 
 ########
