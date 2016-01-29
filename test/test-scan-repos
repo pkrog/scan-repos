@@ -4,6 +4,7 @@
 # CONSTANTS #
 #############
 
+ORIGWD=$(pwd)
 SCRIPTDIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
 SCANREPOS=$SCRIPTDIR/../scan-repos
 
@@ -24,6 +25,7 @@ function check {
 	if [ $? -gt 0 ] ; then
 		echo failure.
 		echo $test_output
+		cd $ORIGWD
 		exit 1
 	fi
 
@@ -44,8 +46,8 @@ function check_same {
 	if [ -z "$file2" ] ; then
 		file2=$file1
 	fi
-	file1=$SCRIPTDIR/$file1.output
-	file2=$SCRIPTDIR/$file2.output.ref
+	file1=$file1.output
+	file2=$file2.output.ref
 
 	if ! diff $file1 $file2 >/dev/null ; then
 		echo "Files $file1 and $file2 are different."
@@ -64,7 +66,7 @@ function run_scanrepos {
 	local output_filename=$1
 	shift
 
-	$SCANREPOS "$@" >$SCRIPTDIR/$output_filename.output 2>&1
+	$SCANREPOS "$@" >$output_filename.output 2>&1
 }
 
 ####################
@@ -339,13 +341,13 @@ function test_repospath {
 	check_same repospath_outside_envvarunset repospath_outside_envvarrelcur || return 1
 
 	# Inside repository
-	cd $SCRIPTDIR/repos-a
+	cd repos-a
 	run_scanrepos ../repospath_inside . || return 1
 	cd -
 	check_same repospath_inside || return 1
 
 	# Inside repository with environment variable unset
-	cd $SCRIPTDIR/repos-a
+	cd repos-a
 	REPOSPATH= run_scanrepos ../repospath_inside_envvarunset  || return 1
 	cd -
 	check_same repospath_inside_envvarunset repospath_inside || return 1
@@ -425,6 +427,7 @@ function test_submodules {
 # MAIN #
 ########
 
+cd $SCRIPTDIR
 check test_submodules
 check test_unknown_option -z
 check test_modified_file
@@ -443,3 +446,4 @@ check test_push_conflict -a
 check test_push_conflict --push
 check test_multiple_repospaths
 check test_space
+cd $ORIGWD
