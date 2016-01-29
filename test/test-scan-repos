@@ -44,8 +44,8 @@ function check_same {
 	if [ -z "$file2" ] ; then
 		file2=$file1
 	fi
-	file1=$file1.output
-	file2=$file2.output.ref
+	file1=$SCRIPTDIR/$file1.output
+	file2=$SCRIPTDIR/$file2.output.ref
 
 	if ! diff $file1 $file2 >/dev/null ; then
 		echo "Files $file1 and $file2 are different."
@@ -64,7 +64,7 @@ function run_scanrepos {
 	local output_filename=$1
 	shift
 
-	$SCANREPOS "$@" >$output_filename.output 2>&1
+	$SCANREPOS "$@" >$SCRIPTDIR/$output_filename.output 2>&1
 }
 
 ####################
@@ -339,15 +339,15 @@ function test_repospath {
 	check_same repospath_outside_envvarunset repospath_outside_envvarrelcur || return 1
 
 	# Inside repository
-	cd repos-a
+	cd $SCRIPTDIR/repos-a
 	run_scanrepos ../repospath_inside . || return 1
-	cd ..
+	cd -
 	check_same repospath_inside || return 1
 
 	# Inside repository with environment variable unset
-	cd repos-a
+	cd $SCRIPTDIR/repos-a
 	REPOSPATH= run_scanrepos ../repospath_inside_envvarunset  || return 1
-	cd ..
+	cd -
 	check_same repospath_inside_envvarunset repospath_inside || return 1
 }
 
