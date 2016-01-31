@@ -88,7 +88,7 @@ function read_args {
 	done
 	shift $((OPTIND - 1))
 
-	# Read reamaining arguments as a list of repositories
+	# Read remaining arguments as a list of repositories
 	if [ -n "$*" ] ; then
 		REPOS=("$@") # Replace any value of REPOSPATH with current specified list of repositories
 
