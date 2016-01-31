@@ -426,7 +426,10 @@ function test_submodules {
 
 	# Test submodules without initialization (not cloned)
 	run_git clone repos-b repos-clone-b
-	check_scanrepos submodules_noinit -s -d repos-clone-b || return 1
+	check_scanrepos submodules_noinit -s repos-clone-b || return 1
+	return 1
+	check_scanrepos submodules_init -is repos-clone-b || return 1
+	return 1
 
 	# Test submodule with detached head
 	run_git clone --recursive repos-b repos-clone-rec-b

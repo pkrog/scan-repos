@@ -16,6 +16,7 @@
 ((DELETED_FILES         = 1 << 8))
 ((DETACHED_HEAD         = 1 << 9))
 ((NOT_INITIALIZED       = 1 << 10))
+((SUBMODULE_INITIALIZED = 1 << 11))
 
 ####################
 # GLOBAL VARIABLES #
@@ -28,6 +29,7 @@ PUSH=
 SUBMODULES=
 PROGRESS=
 DETACHED=
+INIT=
 
 declare -a REPOS
 
@@ -48,6 +50,7 @@ function print_help {
 	echo "   -f, --fetch        Fetch repositories."
 	echo "   -g, --debug        Debug mode."
 	echo "   -h, --help         Print this help message."
+	echo "   -i, --init         Initialize (and update) uninitialized submodules."
 	echo "   -p, --progress     Display progress bar."
 	echo "   -s, --submodules   Check also the states of submodules."
 }
@@ -80,6 +83,7 @@ function read_args {
 			-f|--fetch)         FETCH=1 ;;
 			-g|--debug)         DEBUG=$((DEBUG + 1)) ;;
 			-h|--help)          print_help ; exit 0 ;;
+			-i|--init)          INIT=1 ;;
 			-p|--progress)      PROGRESS=1 ;;
 			-s|--submodules)    SUBMODULES=1 ;;
 			-) error "Illegal option $1." ;;
@@ -369,6 +373,33 @@ function pull_repos {
 	echo $status
 }
 
+########################
+# INITIALIZE SUBMODULE #
+########################
+
+function init_submodule {
+
+	local repospath="$1"
+	local status=$2
+	local prevdir=$(pwd)
+
+	cd "$repospath"
+	print_debug_msg 1 "Initializing $repospath ..."
+
+	if [ $((status & NOT_INITIALIZED)) -ne 0 ] ; then
+		if ! git submodule update --init --recursive . >/dev/null 2>&1 ; then
+			print_warning_msg "Can't run push on repository $repospath."
+		else
+			((status = status ^ (status & NOT_INITIALIZED) ))
+			((status = status | SUBMODULE_INIT))
+		fi
+	fi
+
+	cd $prevdir
+
+	echo $status
+}
+
 ##############
 # PUSH REPOS #
 ##############
@@ -447,6 +478,10 @@ function print_status {
 		if [ -n "$msg" ] ; then msg="$msg, " ; fi
 		msg=$msg$'\e[35m''not initialized'$'\e[0m'
 	fi
+	if [ $((status & SUBMODULE_INIT)) -ne 0 ] ; then
+		if [ -n "$msg" ] ; then msg="$msg, " ; fi
+		msg=$msg$'\e[35m''initialized'$'\e[0m'
+	fi
 	if [ -n "$DETACHED" -a $((status & DETACHED_HEAD)) -ne 0 ] ; then
 		if [ -n "$msg" ] ; then msg="$msg, " ; fi
 		msg=$msg$'\e[1;31m''detached head'$'\e[0m'
@@ -472,6 +507,11 @@ function scan_all {
 
 		# Scan
 		status=$(scan_status "$rep")
+
+		# Initialized submodule
+		if [ -n "$INIT" -a -n "$SUBMODULES" ] ; then
+			status=$(init_submodule "$rep" $status)
+		fi
 
 		# Pull
 		if [ -n "$PULL" ] ; then
@@ -505,7 +545,7 @@ function list_submodules {
 		cd "$rep"
 		local list_submodules_file=$(mktemp -t listrepos.XXXXXX)
 		git submodule status | sed 's/^.[0-9a-f]* //' | sed 's/ \(.*\)$//' > $list_submodules_file
-		cd $OLDPWD
+		cd "$origdir"
 		while read subrep ; do
 			tmprepos+=("$rep/$subrep")
 		done < $list_submodules_file
