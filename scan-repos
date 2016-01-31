@@ -447,7 +447,7 @@ function scan_all {
 		print_progress_bar "Scanning" $i ${#REPOS[@]}
 
 		# Fetch
-		[ -n "$FETCH" -o -n "$PULL" ] && fetch_repos "$rep"
+		[ -n "$FETCH" ] && fetch_repos "$rep"
 
 		# Scan
 		status=$(scan_status "$rep")

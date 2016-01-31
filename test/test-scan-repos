@@ -15,11 +15,10 @@ SCANREPOS=$SCRIPTDIR/../scan-repos
 function check {
 
 	local testfct=$1
-	shift
 
 	# Run test
-	echo -n $testfct "$@" ...
-	test_output=$($testfct "$@" 2>&1)
+	echo -n "$testfct ... "
+	test_output=$($testfct 2>&1)
 
 	# Failure
 	if [ $? -gt 0 ] ; then
@@ -229,14 +228,14 @@ function test_branch_behind {
 
 function test_fetch {
 
-	local flags=$1
-
-	clean_repos
-	mk_repos repos-orig a
-	run_git clone repos-orig repos-clone
-	modify_repos_file repos-orig a
-	run_scanrepos fetch $flags repos-clone || return 1
-	check_same fetch branch_behind || return 1
+	for flag in -f --fetch ; do
+		clean_repos
+		mk_repos repos-orig a
+		run_git clone repos-orig repos-clone
+		modify_repos_file repos-orig a
+		run_scanrepos fetch $flag repos-clone || return 1
+		check_same fetch branch_behind || return 1
+	done
 }
 
 #############
@@ -245,13 +244,13 @@ function test_fetch {
 
 function test_pull {
 
-	local flags=$1
-
-	clean_repos
-	mk_repos repos-orig a
-	run_git clone repos-orig repos-clone
-	modify_repos_file repos-orig a
-	check_scanrepos pull $flags repos-clone || return 1
+	for flag in -b --pull ; do
+		clean_repos
+		mk_repos repos-orig a
+		run_git clone repos-orig repos-clone
+		modify_repos_file repos-orig a
+		check_scanrepos pull -f $flag repos-clone || return 1
+	done
 }
 
 #############
@@ -260,17 +259,17 @@ function test_pull {
 
 function test_push {
 
-	local flags=$1
-
-	clean_repos
-	mk_bare_repos repos-bare
-	mk_repos repos-orig a
-	cd repos-orig
-	run_git remote add origin ../repos-bare
-	run_git push -u origin master
-	cd ..
-	modify_repos_file repos-orig a
-	check_scanrepos push $flags repos-orig || return 1
+	for flag in -a --push ; do
+		clean_repos
+		mk_bare_repos repos-bare
+		mk_repos repos-orig a
+		cd repos-orig
+		run_git remote add origin ../repos-bare
+		run_git push -u origin master
+		cd ..
+		modify_repos_file repos-orig a
+		check_scanrepos push $flag repos-orig || return 1
+	done
 }
 
 ######################
@@ -279,28 +278,28 @@ function test_push {
 
 function test_push_conflict {
 
-	local flags=$1
+	for flag in -a --push ; do
+		# Create a bare repos and an orig repos
+		clean_repos
+		mk_bare_repos repos-bare
+		mk_repos repos-orig a
+		cd repos-orig
+		run_git remote add origin ../repos-bare
+		run_git push -u origin master
+		cd ..
 
-	# Create a bare repos and an orig repos
-	clean_repos
-	mk_bare_repos repos-bare
-	mk_repos repos-orig a
-	cd repos-orig
-	run_git remote add origin ../repos-bare
-	run_git push -u origin master
-	cd ..
+		# Clone orig repos
+		run_git clone repos-orig repos-clone
 
-	# Clone orig repos
-	run_git clone repos-orig repos-clone
+		# Modify orig repos
+		modify_repos_file repos-orig a
+		run_scanrepos push_conflict_orig $flag repos-orig || return 1
+		check_same push_conflict_orig push || return 1
 
-	# Modify orig repos
-	modify_repos_file repos-orig a
-	run_scanrepos push_conflict_orig $flags repos-orig || return 1
-	check_same push_conflict_orig push || return 1
-
-	# Modify clone repos and try to push
-	delete_repos_file repos-clone a
-	check_scanrepos push_conflict_clone $flags repos-clone || return 1
+		# Modify clone repos and try to push
+		delete_repos_file repos-clone a
+		check_scanrepos push_conflict_clone $flag repos-clone || return 1
+	done
 }
 
 ######################
@@ -309,9 +308,7 @@ function test_push_conflict {
 
 function test_unknown_option {
 
-	local flags=$1
-
-	! run_scanrepos unknown_option $flags || return 1
+	! run_scanrepos unknown_option -z || return 1
 	check_same unknown_option || return 1
 }
 
@@ -426,21 +423,17 @@ function test_submodules {
 ########
 
 cd $SCRIPTDIR
-check test_pull -b
-check test_pull --pull
-check test_push -a
-check test_push --push
-check test_push_conflict -a
-check test_push_conflict --push
-check test_unknown_option -z
+check test_pull
+check test_push
+check test_push_conflict
+check test_unknown_option
 check test_modified_file
 check test_deleted_file
 check test_untracked_file
 check test_branch_ahead
 check test_branch_behind
 check test_repospath
-check test_fetch -f
-check test_fetch --fetch
+check test_fetch
 check test_multiple_repospaths
 check test_space
 check test_submodules
