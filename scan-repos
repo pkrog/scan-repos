@@ -81,7 +81,11 @@ function read_args {
 			-h|--help)          print_help ; exit 0 ;;
 			-p|--progress)      PROGRESS=1 ;;
 			-s|--submodules)    SUBMODULES=1 ;;
-			-*) error "Unknown option $1." ;;
+			-) error "Illegal option $1." ;;
+			--) error "Illegal option $1." ;;
+			--*) error "Illegal option $1." ;;
+			-?) error "Unknown option $1." ;;
+			-[^-]*) split_opt=$(echo $1 | sed 's/^-//' | sed 's/\([a-z]\)/ -\1/g') ; set -- $1$split_opt "${@:2}" ;;
 			*) break
 		esac
 		shift
@@ -105,6 +109,14 @@ function read_args {
 	else
 		REPOS=(".")
 	fi
+
+	# Debug
+	[ -n "$FETCH" ] && print_debug_msg 1 "Fetch enabled."
+	[ -n "$PULL" ] && print_debug_msg 1 "Pull enabled."
+	[ -n "$PUSH" ] && print_debug_msg 1 "Push enabled."
+	[ -n "$DETACHED" ] && print_debug_msg 1 "Detached detection enabled."
+	[ -n "$PROGRESS" ] && print_debug_msg 1 "Progress bar enabled."
+	[ -n "$SUBMODULES" ] && print_debug_msg 1 "Submodules scanning enabled."
 }
 
 ###################

@@ -244,12 +244,12 @@ function test_fetch {
 
 function test_pull {
 
-	for flag in -b --pull ; do
+	for flags in "-f -b" "-f --pull" "--fetch --pull" -fb; do
 		clean_repos
 		mk_repos repos-orig a
 		run_git clone repos-orig repos-clone
 		modify_repos_file repos-orig a
-		check_scanrepos pull -f $flag repos-clone || return 1
+		check_scanrepos pull $flags repos-clone || return 1
 	done
 }
 
