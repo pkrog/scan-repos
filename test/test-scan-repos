@@ -426,7 +426,12 @@ function test_submodules {
 ########
 
 cd $SCRIPTDIR
-check test_submodules
+check test_pull -b
+check test_pull --pull
+check test_push -a
+check test_push --push
+check test_push_conflict -a
+check test_push_conflict --push
 check test_unknown_option -z
 check test_modified_file
 check test_deleted_file
@@ -436,12 +441,7 @@ check test_branch_behind
 check test_repospath
 check test_fetch -f
 check test_fetch --fetch
-check test_pull -b
-check test_pull --pull
-check test_push -a
-check test_push --push
-check test_push_conflict -a
-check test_push_conflict --push
 check test_multiple_repospaths
 check test_space
+check test_submodules
 cd $ORIGWD

@@ -260,15 +260,16 @@ function resolve_repos_paths {
 	REPOS=("${tmprepos[@]}")
 }
 
-########
-# SCAN #
-########
+###############
+# SCAN STATUS #
+###############
 
-function scan {
+function scan_status {
 
 	local repospath="$1"
 	local prevdir=$(pwd)
 	local repos_status_file=$(mktemp -t reposstatus.XXXXXX)
+	local status=0
 
 	cd "$repospath"
 	print_debug_msg 1 "Scanning $repospath ..."
@@ -276,10 +277,10 @@ function scan {
 	# Read repository's status
 	if ! git status >$repos_status_file ; then
 		print_warning_msg "Can't get status of repository $repospath."
+		status=-1
 	else
 
 		# Status var
-		status=0
 
 		# Read status line by line
 		while read line ; do
@@ -328,78 +329,125 @@ function scan {
 			fi
 
 		done <$repos_status_file
+	fi
 
-		# Pull
-		if [ -n "$PULL" -a $((status & (BRANCH_BEHIND | BRANCH_DIVERGED) )) -ne 0 -a $((status & (MODIFIED_FILES | DELETED_FILES))) -eq 0 ] ; then
-			if ! git pull >/dev/null ; then
-				print_warning_msg "Can't run pull on repository $repospath."
-			else
-				if [ $((status & BRANCH_DIVERGED)) -ne 0 ] ; then
-					((status = status | BRANCH_AHEAD))
-				fi
-				((status = status ^ (status & (BRANCH_BEHIND | BRANCH_DIVERGED) ) ))
-				((status = status | BRANCH_PULLED))
+	cd $prevdir
+
+	echo $status
+}
+
+##############
+# PULL REPOS #
+##############
+
+function pull_repos {
+
+	local repospath="$1"
+	local status=$2
+	local prevdir=$(pwd)
+
+	cd "$repospath"
+	print_debug_msg 1 "Pulling $repospath ..."
+
+	if [ $((status & (BRANCH_BEHIND | BRANCH_DIVERGED) )) -ne 0 -a $((status & (MODIFIED_FILES | DELETED_FILES))) -eq 0 ] ; then
+		if ! git pull >/dev/null ; then
+			print_warning_msg "Can't run pull on repository $repospath."
+		else
+			if [ $((status & BRANCH_DIVERGED)) -ne 0 ] ; then
+				((status = status | BRANCH_AHEAD))
 			fi
-		fi
-
-		# Push
-		if [ -n "$PUSH" -a $((status & BRANCH_AHEAD)) -ne 0 ] ; then
-			if ! git push >/dev/null 2>&1 ; then
-				print_warning_msg "Can't run push on repository $repospath."
-			else
-				((status = status ^ (status & BRANCH_AHEAD) ))
-				((status = status | BRANCH_PUSHED))
-			fi
-		fi
-
-		# Print message
-		msg=
-		if [ $((status & BRANCH_DIVERGED)) -ne 0 ] ; then
-			if [ -n "$msg" ] ; then msg="$msg, " ; fi
-			msg=$msg$'\e[36m''branch has diverged'$'\e[0m'
-		fi
-		if [ $((status & BRANCH_BEHIND)) -ne 0 ] ; then
-			if [ -n "$msg" ] ; then msg="$msg, " ; fi
-			msg=$msg$'\e[32m''branch is behind'$'\e[0m'
-		fi
-		if [ $((status & BRANCH_PULLED)) -ne 0 ] ; then
-			if [ -n "$msg" ] ; then msg="$msg, " ; fi
-			msg=$msg$'\e[1;32m''branch has been pulled'$'\e[0m'
-		fi
-		if [ $((status & BRANCH_AHEAD)) -ne 0 ] ; then
-			if [ -n "$msg" ] ; then msg="$msg, " ; fi
-			msg=$msg$'\e[34m''branch is ahead'$'\e[0m'
-		fi
-		if [ $((status & BRANCH_PUSHED)) -ne 0 ] ; then
-			if [ -n "$msg" ] ; then msg="$msg, " ; fi
-			msg=$msg$'\e[1;34m''branch has been pushed'$'\e[0m'
-		fi
-		if [ $((status & UNTRACKED_FILES)) -ne 0 ] ; then
-			if [ -n "$msg" ] ; then msg="$msg, " ; fi
-			msg=$msg$'\e[33m''untracked files'$'\e[0m'
-		fi
-		if [ $((status & MODIFIED_FILES)) -ne 0 ] ; then
-			if [ -n "$msg" ] ; then msg="$msg, " ; fi
-			msg=$msg$'\e[31m''modified files'$'\e[0m'
-		fi
-		if [ $((status & DELETED_FILES)) -ne 0 ] ; then
-			if [ -n "$msg" ] ; then msg="$msg, " ; fi
-			msg=$msg$'\e[1;31m''deleted files'$'\e[0m'
-		fi
-		if [ $((status & MODIFIED_SUBMODULES)) -ne 0 ] ; then
-			if [ -n "$msg" ] ; then msg="$msg, " ; fi
-			msg=$msg$'\e[35m''modified submodules'$'\e[0m'
-		fi
-		if [ -n "$DETACHED" -a $((status & DETACHED_HEAD)) -ne 0 ] ; then
-			if [ -n "$msg" ] ; then msg="$msg, " ; fi
-			msg=$msg$'\e[1;31m''detached head'$'\e[0m'
-		fi
-		if [ -n "$msg" ] ; then
-			print_msg "$repospath: ${msg}."
+			((status = status ^ (status & (BRANCH_BEHIND | BRANCH_DIVERGED) ) ))
+			((status = status | BRANCH_PULLED))
 		fi
 	fi
 
 	cd $prevdir
+
+	echo $status
+}
+
+##############
+# PUSH REPOS #
+##############
+
+function push_repos {
+
+	local repospath="$1"
+	local status=$2
+	local prevdir=$(pwd)
+
+	cd "$repospath"
+	print_debug_msg 1 "Pushing $repospath ..."
+
+	if [ $((status & BRANCH_AHEAD)) -ne 0 ] ; then
+		if ! git push >/dev/null 2>&1 ; then
+			print_warning_msg "Can't run push on repository $repospath."
+		else
+			((status = status ^ (status & BRANCH_AHEAD) ))
+			((status = status | BRANCH_PUSHED))
+		fi
+	fi
+
+	cd $prevdir
+
+	echo $status
+}
+
+################
+# PRINT STATUS #
+################
+
+function print_status {
+
+	local repospath="$1"
+	local status=$2
+
+	local msg=
+
+	if [ $((status & BRANCH_DIVERGED)) -ne 0 ] ; then
+		if [ -n "$msg" ] ; then msg="$msg, " ; fi
+		msg=$msg$'\e[36m''branch has diverged'$'\e[0m'
+	fi
+	if [ $((status & BRANCH_BEHIND)) -ne 0 ] ; then
+		if [ -n "$msg" ] ; then msg="$msg, " ; fi
+		msg=$msg$'\e[32m''branch is behind'$'\e[0m'
+	fi
+	if [ $((status & BRANCH_PULLED)) -ne 0 ] ; then
+		if [ -n "$msg" ] ; then msg="$msg, " ; fi
+		msg=$msg$'\e[1;32m''branch has been pulled'$'\e[0m'
+	fi
+	if [ $((status & BRANCH_AHEAD)) -ne 0 ] ; then
+		if [ -n "$msg" ] ; then msg="$msg, " ; fi
+		msg=$msg$'\e[34m''branch is ahead'$'\e[0m'
+	fi
+	if [ $((status & BRANCH_PUSHED)) -ne 0 ] ; then
+		if [ -n "$msg" ] ; then msg="$msg, " ; fi
+		msg=$msg$'\e[1;34m''branch has been pushed'$'\e[0m'
+	fi
+	if [ $((status & UNTRACKED_FILES)) -ne 0 ] ; then
+		if [ -n "$msg" ] ; then msg="$msg, " ; fi
+		msg=$msg$'\e[33m''untracked files'$'\e[0m'
+	fi
+	if [ $((status & MODIFIED_FILES)) -ne 0 ] ; then
+		if [ -n "$msg" ] ; then msg="$msg, " ; fi
+		msg=$msg$'\e[31m''modified files'$'\e[0m'
+	fi
+	if [ $((status & DELETED_FILES)) -ne 0 ] ; then
+		if [ -n "$msg" ] ; then msg="$msg, " ; fi
+		msg=$msg$'\e[1;31m''deleted files'$'\e[0m'
+	fi
+	if [ $((status & MODIFIED_SUBMODULES)) -ne 0 ] ; then
+		if [ -n "$msg" ] ; then msg="$msg, " ; fi
+		msg=$msg$'\e[35m''modified submodules'$'\e[0m'
+	fi
+	if [ -n "$DETACHED" -a $((status & DETACHED_HEAD)) -ne 0 ] ; then
+		if [ -n "$msg" ] ; then msg="$msg, " ; fi
+		msg=$msg$'\e[1;31m''detached head'$'\e[0m'
+	fi
+
+	if [ -n "$msg" ] ; then
+		print_msg "$repospath: ${msg}."
+	fi
 }
 
 ############
@@ -411,7 +459,22 @@ function scan_all {
 	local -i i=1
 	for rep in "${REPOS[@]}" ; do
 		print_progress_bar "Scanning" $i ${#REPOS[@]}
-		scan "$rep"
+
+		# Scan
+		status=$(scan_status "$rep")
+
+		# Pull
+		if [ -n "$PULL" ] ; then
+			status=$(pull_repos "$rep" $status)
+		fi
+
+		# Push
+		if [ -n "$PUSH" ] ; then
+			status=$(push_repos "$rep" $status)
+		fi
+
+		print_status "$rep" $status
+
 		i+=1
 	done
 }
