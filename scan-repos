@@ -15,6 +15,7 @@
 ((BRANCH_DIVERGED       = 1 << 7))
 ((DELETED_FILES         = 1 << 8))
 ((DETACHED_HEAD         = 1 << 9))
+((NOT_INITIALIZED       = 1 << 10))
 
 ####################
 # GLOBAL VARIABLES #
@@ -226,7 +227,7 @@ function resolve_repos_paths {
 			tmprepos+=("$path")
 		else
 			local list_repos_file=$(mktemp -t listrepos.XXXXXX)
-			ls -1d "$path"/*/.git | sed 's/\/\.git$//g' > $list_repos_file
+			ls -1d "$path"/*/.git 2>/dev/null | sed 's/\/\.git$//g' > $list_repos_file
 			while read rep ; do
 				tmprepos+=("$rep")
 			done < $list_repos_file
@@ -251,61 +252,65 @@ function scan_status {
 	cd "$repospath"
 	print_debug_msg 1 "Scanning $repospath ..."
 
-	# Read repository's status
-	if ! git status >$repos_status_file ; then
-		print_warning_msg "Can't get status of repository $repospath."
-		status=-1
+	if [ ! -e .git ] ; then
+		status=NOT_INITIALIZED
 	else
+		# Read repository's status
+		if ! git status >$repos_status_file ; then
+			print_warning_msg "Can't get status of repository $repospath."
+			status=-1
+		else
 
-		# Status var
+			# Status var
 
-		# Read status line by line
-		while read line ; do
+			# Read status line by line
+			while read line ; do
 
-			# Debug output
-			print_debug_msg 2 "STATUS: $line"
+				# Debug output
+				print_debug_msg 2 "STATUS: $line"
 
-			# Detached head
-			if [ -n "$(echo $line | grep '^HEAD detached')" ] ; then
-				((status = status | DETACHED_HEAD))
-			fi
+				# Detached head
+				if [ -n "$(echo $line | grep '^HEAD detached')" ] ; then
+					((status = status | DETACHED_HEAD))
+				fi
 
-			# Untracked files
-			if [ -n "$(echo $line | grep '^Untracked files:')" ] ; then
-				((status = status | UNTRACKED_FILES))
-			fi
+				# Untracked files
+				if [ -n "$(echo $line | grep '^Untracked files:')" ] ; then
+					((status = status | UNTRACKED_FILES))
+				fi
 
-			# Modified submodules
-			if [ -n "$(echo $line | egrep 'modified: .* (.*)*$')" ] ; then
-				((status = status | MODIFIED_SUBMODULES))
-			fi
+				# Modified submodules
+				if [ -n "$(echo $line | egrep 'modified: .* (.*)*$')" ] ; then
+					((status = status | MODIFIED_SUBMODULES))
+				fi
 
-			# Deleted files
-			if [ -n "$(echo $line | egrep 'deleted:[^(]*$')" ] ; then
-				((status = status | DELETED_FILES))
-			fi
+				# Deleted files
+				if [ -n "$(echo $line | egrep 'deleted:[^(]*$')" ] ; then
+					((status = status | DELETED_FILES))
+				fi
 
-			# Modified files
-			if [ -n "$(echo $line | egrep 'modified:[^(]*$')" ] ; then
-				((status = status | MODIFIED_FILES))
-			fi
+				# Modified files
+				if [ -n "$(echo $line | egrep 'modified:[^(]*$')" ] ; then
+					((status = status | MODIFIED_FILES))
+				fi
 
-			# Branch is behind
-			if [ -n "$(echo $line | grep 'branch is behind')" ] ; then
-				((status = status | BRANCH_BEHIND))
-			fi
+				# Branch is behind
+				if [ -n "$(echo $line | grep 'branch is behind')" ] ; then
+					((status = status | BRANCH_BEHIND))
+				fi
 
-			# Branch is ahead
-			if [ -n "$(echo $line | grep 'branch is ahead')" ] ; then
-				((status = status | BRANCH_AHEAD))
-			fi
+				# Branch is ahead
+				if [ -n "$(echo $line | grep 'branch is ahead')" ] ; then
+					((status = status | BRANCH_AHEAD))
+				fi
 
-			# Branch has diverged
-			if [ -n "$(echo $line | grep 'branch and .* have diverged')" ] ; then
-				((status = status | BRANCH_DIVERGED))
-			fi
+				# Branch has diverged
+				if [ -n "$(echo $line | grep 'branch and .* have diverged')" ] ; then
+					((status = status | BRANCH_DIVERGED))
+				fi
 
-		done <$repos_status_file
+			done <$repos_status_file
+		fi
 	fi
 
 	cd $prevdir
@@ -437,6 +442,10 @@ function print_status {
 	if [ $((status & MODIFIED_SUBMODULES)) -ne 0 ] ; then
 		if [ -n "$msg" ] ; then msg="$msg, " ; fi
 		msg=$msg$'\e[35m''modified submodules'$'\e[0m'
+	fi
+	if [ $((status & NOT_INITIALIZED)) -ne 0 ] ; then
+		if [ -n "$msg" ] ; then msg="$msg, " ; fi
+		msg=$msg$'\e[35m''not initialized'$'\e[0m'
 	fi
 	if [ -n "$DETACHED" -a $((status & DETACHED_HEAD)) -ne 0 ] ; then
 		if [ -n "$msg" ] ; then msg="$msg, " ; fi

@@ -318,6 +318,16 @@ function test_unknown_option {
 
 function test_repospath {
 
+	# Test an empty directory
+	clean_repos
+	mkdir repos-z
+	check_scanrepos repospath_empty repos-z || return 1
+
+	# Test an empty subdirectory
+	clean_repos
+	mk_repos repos-z a
+	check_scanrepos repospath_empty_subdir repos-z || return 1
+
 	# Create a repository with a modified file
 	clean_repos
 	mk_repos repos-a a
@@ -414,8 +424,13 @@ function test_submodules {
 
 	check_scanrepos submodules -s repos-b || return 1
 
-	run_git clone --recursive repos-b repos-clone-b
+	# Test submodules without initialization (not cloned)
+	run_git clone repos-b repos-clone-b
 	check_scanrepos submodules_noinit -s -d repos-clone-b || return 1
+
+	# Test submodule with detached head
+	run_git clone --recursive repos-b repos-clone-rec-b
+	check_scanrepos submodules_detached -s -d repos-clone-rec-b || return 1
 }
 
 ########
@@ -423,6 +438,8 @@ function test_submodules {
 ########
 
 cd $SCRIPTDIR
+check test_submodules
+check test_repospath
 check test_pull
 check test_push
 check test_push_conflict
@@ -432,9 +449,7 @@ check test_deleted_file
 check test_untracked_file
 check test_branch_ahead
 check test_branch_behind
-check test_repospath
 check test_fetch
 check test_multiple_repospaths
 check test_space
-check test_submodules
 cd $ORIGWD
