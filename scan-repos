@@ -198,41 +198,6 @@ function print_progress_bar {
 	fi
 }
 
-#########
-# FETCH #
-#########
-
-function fetch {
-
-	local repospath=$1
-	local prevdir=$(pwd)
-	local quiet=--quiet
-	if [ $DEBUG -ge 1 ] ; then quiet= ; fi
-
-	cd $repospath
-	print_debug_msg 1 "Fetching $repospath ..."
-
-	if ! git fetch --all $quiet 2>/dev/null ; then
-		print_warning_msg "Can't fetch repository $repospath."
-	fi
-
-	cd $prevdir
-}
-
-#############
-# FETCH ALL #
-#############
-
-function fetch_all {
-
-	local -i i=1
-	for rep in "${REPOS[@]}" ; do
-		print_progress_bar "Fetching" $i ${#REPOS[@]}
-		fetch $rep
-		i+=1
-	done
-}
-
 #######################
 # RESOLVE REPOS PATHS #
 #######################
@@ -334,6 +299,27 @@ function scan_status {
 	cd $prevdir
 
 	echo $status
+}
+
+#########
+# FETCH #
+#########
+
+function fetch_repos {
+
+	local repospath=$1
+	local prevdir=$(pwd)
+	local quiet=--quiet
+	if [ $DEBUG -ge 1 ] ; then quiet= ; fi
+
+	cd $repospath
+	print_debug_msg 1 "Fetching $repospath ..."
+
+	if ! git fetch --all $quiet 2>/dev/null ; then
+		print_warning_msg "Can't fetch repository $repospath."
+	fi
+
+	cd $prevdir
 }
 
 ##############
@@ -460,6 +446,9 @@ function scan_all {
 	for rep in "${REPOS[@]}" ; do
 		print_progress_bar "Scanning" $i ${#REPOS[@]}
 
+		# Fetch
+		[ -n "$FETCH" -o -n "$PULL" ] && fetch_repos "$rep"
+
 		# Scan
 		status=$(scan_status "$rep")
 
@@ -516,9 +505,6 @@ resolve_repos_paths
 
 # List submodules
 [ -n "$SUBMODULES" ] &&	list_submodules
-
-# Fetch
-[ -n "$FETCH" -o -n "$PULL" ] && fetch_all
 
 # Scan
 scan_all
