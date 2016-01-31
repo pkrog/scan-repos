@@ -415,12 +415,10 @@ function test_submodules {
 	echo "AAA" >> repos-a/a
 	cd ..
 
-	check_scanrepos submodules repos-b || return 1
-
-	check_scanrepos submodules_with_state_in_super -s repos-b || return 1
+	check_scanrepos submodules -s repos-b || return 1
 
 	run_git clone --recursive repos-b repos-clone-b
-	check_scanrepos submodules_noinit -d repos-clone-b || return 1
+	check_scanrepos submodules_noinit -s -d repos-clone-b || return 1
 }
 
 ########

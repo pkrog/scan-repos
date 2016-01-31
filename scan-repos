@@ -298,7 +298,7 @@ function scan {
 			fi
 
 			# Modified submodules
-			if [ -n "$SUBMODULES" -a -n "$(echo $line | egrep 'modified: .* (.*)*$')" ] ; then
+			if [ -n "$(echo $line | egrep 'modified: .* (.*)*$')" ] ; then
 				((status = status | MODIFIED_SUBMODULES))
 			fi
 
@@ -450,10 +450,12 @@ read_args "$@"
 
 # List all repositories
 resolve_repos_paths
-list_submodules
+
+# List submodules
+[ -n "$SUBMODULES" ] &&	list_submodules
 
 # Fetch
-if [ -n "$FETCH" -o -n "$PULL" ] ; then fetch_all ; fi
+[ -n "$FETCH" -o -n "$PULL" ] && fetch_all
 
 # Scan
 scan_all

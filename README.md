@@ -68,7 +68,7 @@ Option | Description
 `-a`   | Push repositories whose current branch is ahead.
 `-b`   | Pull repositories whose current branch is behind.
 `-f`   | Fetch repositories, and thus allows to know which repository has its current branch behind.
-`-s`   | Check also the states of submodules.
+`-s`   | Check also the states of submodules. Takes longer time.
 
 To get a full list of options, run:
 ``` {.bash}
