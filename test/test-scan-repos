@@ -463,11 +463,22 @@ function test_recursive_submodules {
 	check_scanrepos submodules_recursive_detached -sd repos-clone-a || return 1       # detect detached head
 }
 
+#################
+# TEST TRACKING #
+#################
+
+function test_tracking {
+	clean_repos
+	mk_repos repos-a a
+	check_scanrepos no_tracking -t repos-a || return 1
+}
+
 ########
 # MAIN #
 ########
 
 cd $SCRIPTDIR
+check test_tracking
 check test_recursive_submodules
 check test_submodules
 check test_repospath
