@@ -431,11 +431,40 @@ function test_submodules {
 	check_scanrepos submodules_detached -sd repos-clone-b || return 1       # detect detached head
 }
 
+#############################
+# TEST RECURSIVE SUBMODULES #
+#############################
+
+function test_recursive_submodules {
+
+	# Create three repositories
+	clean_repos
+	mk_repos repos-a a
+	mk_repos repos-b b
+	mk_repos repos-c c
+	modify_repos_file repos-a a
+
+	# Make c a submodule of b
+	cd repos-b
+	run_git submodule add ../repos-c
+	run_git commit -m "Add submodule c."
+	cd ..
+
+	# Make b a submodule of a
+	cd repos-a
+	run_git submodule add ../repos-b
+	run_git commit -m "Add submodule b."
+	cd ..
+
+	# Clone
+}
+
 ########
 # MAIN #
 ########
 
 cd $SCRIPTDIR
+check test_recursive_submodules
 check test_submodules
 check test_repospath
 check test_pull
