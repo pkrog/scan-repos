@@ -15,8 +15,8 @@
 ((BRANCH_DIVERGED       = 1 << 7))
 ((DELETED_FILES         = 1 << 8))
 ((DETACHED_HEAD         = 1 << 9))
-((NOT_INITIALIZED       = 1 << 10))
-((SUBMODULE_INITIALIZED = 1 << 11))
+((NOT_INITIALIZED       = 1 << 10)) # Submodule not initialized.
+((INITIALIZED           = 1 << 11)) # Submodule has been initialized.
 
 ####################
 # GLOBAL VARIABLES #
@@ -391,7 +391,7 @@ function init_submodule {
 			print_warning_msg "Can't run push on repository $repospath."
 		else
 			((status = status ^ (status & NOT_INITIALIZED) ))
-			((status = status | SUBMODULE_INIT))
+			((status = status | INITIALIZED))
 		fi
 	fi
 
@@ -478,7 +478,7 @@ function print_status {
 		if [ -n "$msg" ] ; then msg="$msg, " ; fi
 		msg=$msg$'\e[35m''not initialized'$'\e[0m'
 	fi
-	if [ $((status & SUBMODULE_INIT)) -ne 0 ] ; then
+	if [ $((status & INITIALIZED)) -ne 0 ] ; then
 		if [ -n "$msg" ] ; then msg="$msg, " ; fi
 		msg=$msg$'\e[35m''initialized'$'\e[0m'
 	fi
