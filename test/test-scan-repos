@@ -468,9 +468,26 @@ function test_recursive_submodules {
 #################
 
 function test_tracking {
+
+	# Simple repos
 	clean_repos
 	mk_repos repos-a a
 	check_scanrepos no_tracking -t repos-a || return 1
+
+	# Repos with detached head
+	clean_repos
+	mk_repos repos-a a
+	mk_repos repos-b b
+	cd repos-b
+	run_git submodule add ../repos-a
+	run_git commit -m "Add submodule."
+	echo "AAA" >> repos-a/a
+	cd ..
+	run_git clone repos-b repos-clone-b
+	check_scanrepos no_tracking_detached_head -st repos-clone-b || return 1
+# TODO add option --not-initialized (-n) to detect not initialized submodules on demand.
+
+	# Not initialized Repos
 }
 
 ########

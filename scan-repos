@@ -278,7 +278,7 @@ function scan_status {
 				print_debug_msg 2 "STATUS: $line"
 
 				# Branch up-to-date
-				if [ -n "$(echo $line | grep '^is up-to-date')" ] ; then
+				if [ -n "$(echo $line | grep '^Your branch is up-to-date')" ] ; then
 					((status = status | BRANCH_UPTODATE))
 				fi
 
