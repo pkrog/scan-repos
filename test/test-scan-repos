@@ -456,7 +456,11 @@ function test_recursive_submodules {
 	run_git commit -m "Add submodule b."
 	cd ..
 
-	# Clone
+	# Clone repos a
+	run_git clone repos-a repos-clone-a
+	check_scanrepos submodules_recursive_noinit -s repos-clone-a || return 1
+	check_scanrepos submodules_recursive_init -is repos-clone-a || return 1
+	check_scanrepos submodules_recursive_detached -sd repos-clone-a || return 1       # detect detached head
 }
 
 ########
