@@ -17,6 +17,7 @@
 ((DETACHED_HEAD         = 1 << 9))
 ((NOT_INITIALIZED       = 1 << 10)) # Submodule not initialized.
 ((INITIALIZED           = 1 << 11)) # Submodule has been initialized.
+((BRANCH_UPTODATE       = 1 << 12))
 
 ####################
 # GLOBAL VARIABLES #
@@ -30,6 +31,7 @@ SUBMODULES=
 PROGRESS=
 DETACHED=
 INIT=
+TRACKING=
 
 declare -a REPOS
 
@@ -53,6 +55,7 @@ function print_help {
 	echo "   -i, --init         Initialize (and update) uninitialized submodules."
 	echo "   -p, --progress     Display progress bar."
 	echo "   -s, --submodules   Check also the states of submodules."
+	echo "   -t, --tracking     Detect branches that do not track a remote branch."
 }
 
 #########
@@ -86,6 +89,7 @@ function read_args {
 			-i|--init)          INIT=1 ;;
 			-p|--progress)      PROGRESS=1 ;;
 			-s|--submodules)    SUBMODULES=1 ;;
+			-t|--tracking)      TRACKING=1 ;;
 			-) error "Illegal option $1." ;;
 			--) error "Illegal option $1." ;;
 			--*) error "Illegal option $1." ;;
@@ -270,6 +274,11 @@ function scan_status {
 
 				# Debug output
 				print_debug_msg 2 "STATUS: $line"
+
+				# Branch up-to-date
+				if [ -n "$(echo $line | grep '^Your branch is up-to-date')" ] ; then
+					((status = status | BRANCH_UPTODATE))
+				fi
 
 				# Detached head
 				if [ -n "$(echo $line | grep '^HEAD detached')" ] ; then
@@ -485,6 +494,10 @@ function print_status {
 		if [ -n "$branch" ] ; then msg="$msg, " ; fi
 		msg=$msg$'\e[1;31m''detached head'$'\e[0m'
 	fi
+	if [ -n "$TRACKING" -a $((status & (BRANCH_BEHIND | BRANCH_AHEAD | BRANCH_UPTODATE))) -eq 0 ] ; then
+		if [ -n "$msg" ] ; then msg="$msg, " ; fi
+		msg=$msg$'\e[1;31m''no tracking'$'\e[0m'
+	fi
 
 	if [ -n "$msg" ] ; then
 		header=$repospath
@@ -544,7 +557,7 @@ function list_submodules {
 		tmprepos+=("$rep")
 		cd "$rep"
 		local list_submodules_file=$(mktemp -t listrepos.XXXXXX)
-		git submodule status | sed 's/^.[0-9a-f]* //' | sed 's/ \(.*\)$//' > $list_submodules_file
+		git submodule status --recursive | sed 's/^.[0-9a-f]* //' | sed 's/ \(.*\)$//' > $list_submodules_file
 		cd "$origdir"
 		while read subrep ; do
 			tmprepos+=("$rep/$subrep")
