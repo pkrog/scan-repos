@@ -265,8 +265,6 @@ function scan_status {
 			status=-1
 		else
 
-			# Status var
-
 			# Read status line by line
 			while read line ; do
 
@@ -434,7 +432,8 @@ function push_repos {
 function print_status {
 
 	local repospath="$1"
-	local status=$2
+	local branch=$2
+	local status=$3
 
 	local msg=
 
@@ -483,12 +482,13 @@ function print_status {
 		msg=$msg$'\e[35m''initialized'$'\e[0m'
 	fi
 	if [ -n "$DETACHED" -a $((status & DETACHED_HEAD)) -ne 0 ] ; then
-		if [ -n "$msg" ] ; then msg="$msg, " ; fi
+		if [ -n "$branch" ] ; then msg="$msg, " ; fi
 		msg=$msg$'\e[1;31m''detached head'$'\e[0m'
 	fi
 
 	if [ -n "$msg" ] ; then
-		print_msg "$repospath: ${msg}."
+		header=$repospath
+		print_msg "$header: ${msg}."
 	fi
 }
 
