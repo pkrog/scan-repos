@@ -18,6 +18,7 @@
 ((NOT_INITIALIZED       = 1 << 10)) # Submodule not initialized.
 ((INITIALIZED           = 1 << 11)) # Submodule has been initialized.
 ((BRANCH_UPTODATE       = 1 << 12))
+((GIT_FAILURE           = 1 << 13))
 
 ####################
 # GLOBAL VARIABLES #
@@ -246,6 +247,37 @@ function resolve_repos_paths {
 	REPOS=("${tmprepos[@]}")
 }
 
+###################
+# GET STATUS FILE #
+###################
+
+function get_status_file {
+
+	local repospath="$1"
+	local repos_status_file=$(mktemp -t reposstatus.XXXXXX)
+	local prevdir=$(pwd)
+
+	# Enter repository's directory
+	cd "$repospath"
+
+	# Get status
+	print_debug_msg 1 "Getting repository \"$repospath\" status..."
+	if [ ! -e .git ] ; then
+		echo NOT INITIALIZED >$repos_status_file
+		print_debug_msg 1 "Repository not initialized."
+	elif ! git status >$repos_status_file ; then
+		echo GIT FAILURE >$repos_status_file
+		print_warning_msg "Can't get status of repository $repospath."
+	fi
+
+	# Go back to previous directory
+	cd $prevdir
+
+	# Return status filename
+	print_debug_msg 1 "Repository \"$repospath\" status file is \"$repos_status_file\"."
+	echo $repos_status_file
+}
+
 ###############
 # SCAN STATUS #
 ###############
@@ -253,80 +285,75 @@ function resolve_repos_paths {
 function scan_status {
 
 	local repospath="$1"
-	local prevdir=$(pwd)
-	local repos_status_file=$(mktemp -t reposstatus.XXXXXX)
+	local repos_status_file="$2"
 	local status=0
 
-	cd "$repospath"
-	print_debug_msg 1 "Scanning $repospath ..."
+	print_debug_msg 1 "Scanning repository \"$repospath\" status..."
 
-	if [ ! -e .git ] ; then
-		((status = NOT_INITIALIZED))
-		print_debug_msg 1 "Repository not initialized."
-	else
-		# Read repository's status
-		if ! git status >$repos_status_file ; then
-			print_warning_msg "Can't get status of repository $repospath."
-			((status = -1))
-		else
+	# Read status line by line
+	while read line ; do
 
-			# Read status line by line
-			while read line ; do
+		# Debug output
+		print_debug_msg 2 "STATUS: $line"
 
-				# Debug output
-				print_debug_msg 2 "STATUS: $line"
-
-				# Branch up-to-date
-				if [ -n "$(echo $line | grep '^Your branch is up-to-date')" ] ; then
-					((status = status | BRANCH_UPTODATE))
-				fi
-
-				# Detached head
-				if [ -n "$(echo $line | grep '^HEAD detached')" ] ; then
-					((status = status | DETACHED_HEAD))
-				fi
-
-				# Untracked files
-				if [ -n "$(echo $line | grep '^Untracked files:')" ] ; then
-					((status = status | UNTRACKED_FILES))
-				fi
-
-				# Modified submodules
-				if [ -n "$(echo $line | egrep 'modified: .* (.*)*$')" ] ; then
-					((status = status | MODIFIED_SUBMODULES))
-				fi
-
-				# Deleted files
-				if [ -n "$(echo $line | egrep 'deleted:[^(]*$')" ] ; then
-					((status = status | DELETED_FILES))
-				fi
-
-				# Modified files
-				if [ -n "$(echo $line | egrep 'modified:[^(]*$')" ] ; then
-					((status = status | MODIFIED_FILES))
-				fi
-
-				# Branch is behind
-				if [ -n "$(echo $line | grep 'branch is behind')" ] ; then
-					((status = status | BRANCH_BEHIND))
-				fi
-
-				# Branch is ahead
-				if [ -n "$(echo $line | grep 'branch is ahead')" ] ; then
-					((status = status | BRANCH_AHEAD))
-				fi
-
-				# Branch has diverged
-				if [ -n "$(echo $line | grep 'branch and .* have diverged')" ] ; then
-					((status = status | BRANCH_DIVERGED))
-				fi
-
-			done <$repos_status_file
+		# Repository not initialized
+		if [ -n "$(echo $line | grep '^NOT INITIALIZED$')" ] ; then
+			((status = status | NOT_INITIALIZED))
 		fi
-	fi
 
-	cd $prevdir
+		# Git failure
+		if [ -n "$(echo $line | grep '^GIT FAILURE$')" ] ; then
+			((status = status | GIT_FAILURE))
+		fi
 
+		# Branch up-to-date
+		if [ -n "$(echo $line | grep '^Your branch is up-to-date')" ] ; then
+			((status = status | BRANCH_UPTODATE))
+		fi
+
+		# Detached head
+		if [ -n "$(echo $line | grep '^HEAD detached')" ] ; then
+			((status = status | DETACHED_HEAD))
+		fi
+
+		# Untracked files
+		if [ -n "$(echo $line | grep '^Untracked files:')" ] ; then
+			((status = status | UNTRACKED_FILES))
+		fi
+
+		# Modified submodules
+		if [ -n "$(echo $line | egrep 'modified: .* (.*)*$')" ] ; then
+			((status = status | MODIFIED_SUBMODULES))
+		fi
+
+		# Deleted files
+		if [ -n "$(echo $line | egrep 'deleted:[^(]*$')" ] ; then
+			((status = status | DELETED_FILES))
+		fi
+
+		# Modified files
+		if [ -n "$(echo $line | egrep 'modified:[^(]*$')" ] ; then
+			((status = status | MODIFIED_FILES))
+		fi
+
+		# Branch is behind
+		if [ -n "$(echo $line | grep 'branch is behind')" ] ; then
+			((status = status | BRANCH_BEHIND))
+		fi
+
+		# Branch is ahead
+		if [ -n "$(echo $line | grep 'branch is ahead')" ] ; then
+			((status = status | BRANCH_AHEAD))
+		fi
+
+		# Branch has diverged
+		if [ -n "$(echo $line | grep 'branch and .* have diverged')" ] ; then
+			((status = status | BRANCH_DIVERGED))
+		fi
+
+	done <$repos_status_file
+
+	# Return status
 	print_debug_msg 1 "Status = $status."
 	echo $status
 }
@@ -486,6 +513,10 @@ function print_status {
 		if [ -n "$msg" ] ; then msg="$msg, " ; fi
 		msg=$msg$'\e[35m''modified submodules'$'\e[0m'
 	fi
+	if [ $((status & GIT_FAILURE)) -ne 0 ] ; then
+		if [ -n "$msg" ] ; then msg="$msg, " ; fi
+		msg=$msg$'\e[35m''git failure'$'\e[0m'
+	fi
 	if [ $((status & NOT_INITIALIZED)) -ne 0 ] ; then
 		if [ -n "$msg" ] ; then msg="$msg, " ; fi
 		msg=$msg$'\e[35m''not initialized'$'\e[0m'
@@ -523,7 +554,8 @@ function scan_all {
 		[ -n "$FETCH" ] && fetch_repos "$rep"
 
 		# Scan
-		status=$(scan_status "$rep")
+		status_file=$(get_status_file "$rep")
+		status=$(scan_status "$rep" "$status_file")
 		branch="" # TODO
 
 		# Initialize submodule
