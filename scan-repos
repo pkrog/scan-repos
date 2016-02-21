@@ -33,6 +33,7 @@ PROGRESS=
 DETACHED=
 INIT=
 TRACKING=
+BRANCHNAME=
 
 declare -a REPOS
 
@@ -54,6 +55,7 @@ function print_help {
 	echo "   -g, --debug        Debug mode."
 	echo "   -h, --help         Print this help message."
 	echo "   -i, --init         Initialize (and update) uninitialized submodules."
+	echo "   -n, --branchname   Display current branch name."
 	echo "   -p, --progress     Display progress bar."
 	echo "   -s, --submodules   Check also the states of submodules."
 	echo "   -t, --tracking     Detect branches that do not track a remote branch."
@@ -88,6 +90,7 @@ function read_args {
 			-g|--debug)         DEBUG=$((DEBUG + 1)) ;;
 			-h|--help)          print_help ; exit 0 ;;
 			-i|--init)          INIT=1 ;;
+			-n|--branchname)    BRANCHNAME=1 ;;
 			-p|--progress)      PROGRESS=1 ;;
 			-s|--submodules)    SUBMODULES=1 ;;
 			-t|--tracking)      TRACKING=1 ;;
@@ -254,7 +257,7 @@ function resolve_repos_paths {
 function get_status_file {
 
 	local repospath="$1"
-	local repos_status_file=$(mktemp -t reposstatus.XXXXXX)
+	local repos_status_file=$(mktemp -t "scanrepos.status.XXXXXX")
 	local prevdir=$(pwd)
 
 	# Enter repository's directory
@@ -284,11 +287,10 @@ function get_status_file {
 
 function scan_status {
 
-	local repospath="$1"
-	local repos_status_file="$2"
+	local repos_status_file="$1"
 	local status=0
 
-	print_debug_msg 1 "Scanning repository \"$repospath\" status..."
+	print_debug_msg 1 "Scanning repository status..."
 
 	# Read status line by line
 	while read line ; do
@@ -356,6 +358,25 @@ function scan_status {
 	# Return status
 	print_debug_msg 1 "Status = $status."
 	echo $status
+}
+
+###################
+# GET BRANCH NAME #
+###################
+
+function get_branch_name {
+
+	local repos_status_file="$1"
+	local branchname=""
+
+	print_debug_msg 1 "Getting repository current branch name..."
+
+	# Search for branchname inside status file
+	branchname=$(sed -ne '1s/^On branch \(.*\)$/\1/p' "$repos_status_file")
+
+	# Return branch name
+	print_debug_msg 1 "Branch name is \"$branchname\"."
+	echo "$branchname"
 }
 
 #########
@@ -536,6 +557,9 @@ function print_status {
 
 	if [ -n "$msg" ] ; then
 		header=$repospath
+		if [ -n "$BRANCHNAME" -a -n "$branch" ] ; then
+			header="$header($branch)"
+		fi
 		print_msg "$header: ${msg}."
 	fi
 }
@@ -555,8 +579,8 @@ function scan_all {
 
 		# Scan
 		status_file=$(get_status_file "$rep")
-		status=$(scan_status "$rep" "$status_file")
-		branch="" # TODO
+		status=$(scan_status "$status_file")
+		branch=$(get_branch_name "$status_file")
 
 		# Initialize submodule
 		if [ -n "$INIT" -a -n "$SUBMODULES" ] ; then

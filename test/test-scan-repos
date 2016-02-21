@@ -506,11 +506,23 @@ function test_tracking {
 	check_scanrepos no_tracking_detached_head -std repos-clone-b || return 1
 }
 
+####################
+# TEST BRANCH NAME #
+####################
+
+function test_branch_name {
+	clean_repos
+	mk_repos repos-a a
+	echo "AAA" >> repos-a/a
+	check_scanrepos branch_name -n repos-a || return 1
+}
+
 ########
 # MAIN #
 ########
 
 cd $SCRIPTDIR
+check test_branch_name
 check test_submodule_notinit
 check test_tracking
 check test_recursive_submodules
