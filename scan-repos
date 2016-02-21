@@ -447,68 +447,26 @@ function print_status {
 
 	print_debug_msg 1 "Printing status $status of $repospath ..."
 
-	if [ $((status & BRANCH_DIVERGED)) -ne 0 ] ; then
-		if [ -n "$msg" ] ; then msg="$msg, " ; fi
-		msg=$msg$'\e[36m''branch has diverged'$'\e[0m'
-	fi
-	if [ $((status & BRANCH_BEHIND)) -ne 0 ] ; then
-		if [ -n "$msg" ] ; then msg="$msg, " ; fi
-		msg=$msg$'\e[32m''branch is behind'$'\e[0m'
-	fi
-	if [ $((status & BRANCH_PULLED)) -ne 0 ] ; then
-		if [ -n "$msg" ] ; then msg="$msg, " ; fi
-		msg=$msg$'\e[1;32m''branch has been pulled'$'\e[0m'
-	fi
-	if [ $((status & BRANCH_AHEAD)) -ne 0 ] ; then
-		if [ -n "$msg" ] ; then msg="$msg, " ; fi
-		msg=$msg$'\e[34m''branch is ahead'$'\e[0m'
-	fi
-	if [ $((status & BRANCH_PUSHED)) -ne 0 ] ; then
-		if [ -n "$msg" ] ; then msg="$msg, " ; fi
-		msg=$msg$'\e[1;34m''branch has been pushed'$'\e[0m'
-	fi
-	if [ $((status & UNTRACKED_FILES)) -ne 0 ] ; then
-		if [ -n "$msg" ] ; then msg="$msg, " ; fi
-		msg=$msg$'\e[33m''untracked files'$'\e[0m'
-	fi
-	if [ $((status & MODIFIED_FILES)) -ne 0 ] ; then
-		if [ -n "$msg" ] ; then msg="$msg, " ; fi
-		msg=$msg$'\e[31m''modified files'$'\e[0m'
-	fi
-	if [ $((status & DELETED_FILES)) -ne 0 ] ; then
-		if [ -n "$msg" ] ; then msg="$msg, " ; fi
-		msg=$msg$'\e[1;31m''deleted files'$'\e[0m'
-	fi
-	if [ $((status & MODIFIED_SUBMODULES)) -ne 0 ] ; then
-		if [ -n "$msg" ] ; then msg="$msg, " ; fi
-		msg=$msg$'\e[35m''modified submodules'$'\e[0m'
-	fi
-	if [ $((status & GIT_FAILURE)) -ne 0 ] ; then
-		if [ -n "$msg" ] ; then msg="$msg, " ; fi
-		msg=$msg$'\e[35m''git failure'$'\e[0m'
-	fi
-	if [ $((status & NOT_INITIALIZED)) -ne 0 ] ; then
-		if [ -n "$msg" ] ; then msg="$msg, " ; fi
-		msg=$msg$'\e[35m''not initialized'$'\e[0m'
-	fi
-	if [ $((status & INITIALIZED)) -ne 0 ] ; then
-		if [ -n "$msg" ] ; then msg="$msg, " ; fi
-		msg=$msg$'\e[35m''initialized'$'\e[0m'
-	fi
-	if [ -n "$DETACHED" -a $((status & DETACHED_HEAD)) -ne 0 ] ; then
-		if [ -n "$branch" ] ; then msg="$msg, " ; fi
-		msg=$msg$'\e[1;31m''detached head'$'\e[0m'
-	fi
-	if [ -n "$TRACKING" -a $((status & (NOT_INITIALIZED | DETACHED_HEAD | BRANCH_BEHIND | BRANCH_AHEAD | BRANCH_UPTODATE))) -eq 0 ] ; then
-		if [ -n "$msg" ] ; then msg="$msg, " ; fi
-		msg=$msg$'\e[1;31m''no tracking'$'\e[0m'
-	fi
+	[ $((status & BRANCH_DIVERGED)) -ne 0 ]                 && msg="$msg, "$'\e[36m''branch has diverged'$'\e[0m'
+	[ $((status & BRANCH_BEHIND)) -ne 0 ]                   && msg="$msg, "$'\e[32m''branch is behind'$'\e[0m'
+	[ $((status & BRANCH_PULLED)) -ne 0 ]                   && msg="$msg, "$'\e[1;32m''branch has been pulled'$'\e[0m'
+	[ $((status & BRANCH_AHEAD)) -ne 0 ]                    && msg="$msg, "$'\e[34m''branch is ahead'$'\e[0m'
+	[ $((status & BRANCH_PUSHED)) -ne 0 ]                   && msg="$msg, "$'\e[1;34m''branch has been pushed'$'\e[0m'
+	[ $((status & UNTRACKED_FILES)) -ne 0 ]                 && msg="$msg, "$'\e[33m''untracked files'$'\e[0m'
+	[ $((status & MODIFIED_FILES)) -ne 0 ]                  && msg="$msg, "$'\e[31m''modified files'$'\e[0m'
+	[ $((status & DELETED_FILES)) -ne 0 ]                   && msg="$msg, "$'\e[1;31m''deleted files'$'\e[0m'
+	[ $((status & MODIFIED_SUBMODULES)) -ne 0 ]             && msg="$msg, "$'\e[35m''modified submodules'$'\e[0m'
+	[ $((status & GIT_FAILURE)) -ne 0 ]                     && msg="$msg, "$'\e[35m''git failure'$'\e[0m'
+	[ $((status & NOT_INITIALIZED)) -ne 0 ]                 && msg="$msg, "$'\e[35m''not initialized'$'\e[0m'
+	[ $((status & INITIALIZED)) -ne 0 ]                     && msg="$msg, "$'\e[35m''initialized'$'\e[0m'
+	[ -n "$DETACHED" -a $((status & DETACHED_HEAD)) -ne 0 ] && msg="$msg, "$'\e[1;31m''detached head'$'\e[0m'
+	[ -n "$TRACKING" -a $((status & (NOT_INITIALIZED | DETACHED_HEAD | BRANCH_BEHIND | BRANCH_AHEAD | BRANCH_UPTODATE))) -eq 0 ] && msg="$msg, "$'\e[1;31m''no tracking'$'\e[0m'
 
+	# Display message
 	if [ -n "$msg" ] ; then
+		msg=${msg#, } # Remove first comma
 		header=$repospath
-		if [ -n "$BRANCHNAME" -a -n "$branch" ] ; then
-			header="$header($branch)"
-		fi
+		[ -n "$BRANCHNAME" -a -n "$branch" ] && header="$header($branch)"
 		print_msg "$header: ${msg}."
 	fi
 }
