@@ -292,68 +292,17 @@ function scan_status {
 
 	print_debug_msg 1 "Scanning repository status..."
 
-	# Read status line by line
-	while read line ; do
-
-		# Debug output
-		print_debug_msg 2 "STATUS: $line"
-
-		# Repository not initialized
-		if [ -n "$(echo $line | grep '^NOT INITIALIZED$')" ] ; then
-			((status = status | NOT_INITIALIZED))
-		fi
-
-		# Git failure
-		if [ -n "$(echo $line | grep '^GIT FAILURE$')" ] ; then
-			((status = status | GIT_FAILURE))
-		fi
-
-		# Branch up-to-date
-		if [ -n "$(echo $line | grep '^Your branch is up-to-date')" ] ; then
-			((status = status | BRANCH_UPTODATE))
-		fi
-
-		# Detached head
-		if [ -n "$(echo $line | grep '^HEAD detached')" ] ; then
-			((status = status | DETACHED_HEAD))
-		fi
-
-		# Untracked files
-		if [ -n "$(echo $line | grep '^Untracked files:')" ] ; then
-			((status = status | UNTRACKED_FILES))
-		fi
-
-		# Modified submodules
-		if [ -n "$(echo $line | egrep 'modified: .* (.*)*$')" ] ; then
-			((status = status | MODIFIED_SUBMODULES))
-		fi
-
-		# Deleted files
-		if [ -n "$(echo $line | egrep 'deleted:[^(]*$')" ] ; then
-			((status = status | DELETED_FILES))
-		fi
-
-		# Modified files
-		if [ -n "$(echo $line | egrep 'modified:[^(]*$')" ] ; then
-			((status = status | MODIFIED_FILES))
-		fi
-
-		# Branch is behind
-		if [ -n "$(echo $line | grep 'branch is behind')" ] ; then
-			((status = status | BRANCH_BEHIND))
-		fi
-
-		# Branch is ahead
-		if [ -n "$(echo $line | grep 'branch is ahead')" ] ; then
-			((status = status | BRANCH_AHEAD))
-		fi
-
-		# Branch has diverged
-		if [ -n "$(echo $line | grep 'branch and .* have diverged')" ] ; then
-			((status = status | BRANCH_DIVERGED))
-		fi
-
-	done <$repos_status_file
+	grep -q '^NOT INITIALIZED$'             "$repos_status_file" && ((status = status | NOT_INITIALIZED))
+	grep -q '^GIT FAILURE$'                 "$repos_status_file" && ((status = status | GIT_FAILURE))
+	grep -q '^Your branch is up-to-date'    "$repos_status_file" && ((status = status | BRANCH_UPTODATE))
+	grep -q '^HEAD detached'                "$repos_status_file" && ((status = status | DETACHED_HEAD))
+	grep -q '^Untracked files:'             "$repos_status_file" && ((status = status | UNTRACKED_FILES))
+	grep -q 'modified: .* (.*)*$'           "$repos_status_file" && ((status = status | MODIFIED_SUBMODULES))
+	grep -q 'deleted:[^(]*$'                "$repos_status_file" && ((status = status | DELETED_FILES))
+	egrep -q 'modified:[^(]*$'              "$repos_status_file" && ((status = status | MODIFIED_FILES))
+	grep -q 'branch is behind'              "$repos_status_file" && ((status = status | BRANCH_BEHIND))
+	grep -q 'branch is ahead'               "$repos_status_file" && ((status = status | BRANCH_AHEAD))
+	grep -q 'branch and .* have diverged'   "$repos_status_file" && ((status = status | BRANCH_DIVERGED))
 
 	# Return status
 	print_debug_msg 1 "Status = $status."
