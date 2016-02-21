@@ -520,8 +520,9 @@ function scan_all {
 
 		# Scan
 		status=$(scan_status "$rep")
+		branch="" # TODO
 
-		# Initialized submodule
+		# Initialize submodule
 		if [ -n "$INIT" -a -n "$SUBMODULES" ] ; then
 			status=$(init_submodule "$rep" $status)
 		fi
