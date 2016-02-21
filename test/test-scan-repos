@@ -503,10 +503,7 @@ function test_tracking {
 	echo "AAA" >> repos-a/a
 	cd ..
 	run_git clone --recursive repos-b repos-clone-b
-# XXX repos-a is not initialized (empty folder)
-	check_scanrepos no_tracking_detached_head -st repos-clone-b || return 1
-
-	# Not initialized Repos
+	check_scanrepos no_tracking_detached_head -std repos-clone-b || return 1
 }
 
 ########
