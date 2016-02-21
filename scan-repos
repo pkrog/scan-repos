@@ -261,12 +261,13 @@ function scan_status {
 	print_debug_msg 1 "Scanning $repospath ..."
 
 	if [ ! -e .git ] ; then
-		status=NOT_INITIALIZED
+		((status = NOT_INITIALIZED))
+		print_debug_msg 1 "Repository not initialized."
 	else
 		# Read repository's status
 		if ! git status >$repos_status_file ; then
 			print_warning_msg "Can't get status of repository $repospath."
-			status=-1
+			((status = -1))
 		else
 
 			# Read status line by line
@@ -326,6 +327,7 @@ function scan_status {
 
 	cd $prevdir
 
+	print_debug_msg 1 "Status = $status."
 	echo $status
 }
 
@@ -446,6 +448,8 @@ function print_status {
 
 	local msg=
 
+	print_debug_msg 1 "Printing status $status of $repospath ..."
+
 	if [ $((status & BRANCH_DIVERGED)) -ne 0 ] ; then
 		if [ -n "$msg" ] ; then msg="$msg, " ; fi
 		msg=$msg$'\e[36m''branch has diverged'$'\e[0m'
@@ -494,7 +498,7 @@ function print_status {
 		if [ -n "$branch" ] ; then msg="$msg, " ; fi
 		msg=$msg$'\e[1;31m''detached head'$'\e[0m'
 	fi
-	if [ -n "$TRACKING" -a $((status & (BRANCH_BEHIND | BRANCH_AHEAD | BRANCH_UPTODATE))) -eq 0 ] ; then
+	if [ -n "$TRACKING" -a $((status & (NOT_INITIALIZED | DETACHED_HEAD | BRANCH_BEHIND | BRANCH_AHEAD | BRANCH_UPTODATE))) -eq 0 ] ; then
 		if [ -n "$msg" ] ; then msg="$msg, " ; fi
 		msg=$msg$'\e[1;31m''no tracking'$'\e[0m'
 	fi
@@ -537,7 +541,7 @@ function scan_all {
 			status=$(push_repos "$rep" $status)
 		fi
 
-		print_status "$rep" $status
+		print_status "$rep" "$branch" $status
 
 		i+=1
 	done
