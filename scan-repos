@@ -270,7 +270,7 @@ function get_status_file {
 		print_debug_msg 1 "Repository not initialized."
 	elif ! git status >$repos_status_file ; then
 		echo GIT FAILURE >$repos_status_file
-		print_warning_msg "Can't get status of repository $repospath."
+		print_warning_msg "Failure on getting status of repository $repospath."
 	fi
 
 	# Go back to previous directory
@@ -343,7 +343,7 @@ function fetch_repos {
 	print_debug_msg 1 "Fetching $repospath ..."
 
 	if ! git fetch --all $quiet 2>/dev/null ; then
-		print_warning_msg "Can't fetch repository $repospath."
+		print_warning_msg "Failure on fetching repository $repospath."
 	fi
 
 	cd $prevdir
@@ -364,7 +364,7 @@ function pull_repos {
 
 	if [ $((status & (BRANCH_BEHIND | BRANCH_DIVERGED) )) -ne 0 -a $((status & (MODIFIED_FILES | DELETED_FILES))) -eq 0 ] ; then
 		if ! git pull >/dev/null ; then
-			print_warning_msg "Can't run pull on repository $repospath."
+			print_warning_msg "Failure on pulling repository $repospath."
 		else
 			if [ $((status & BRANCH_DIVERGED)) -ne 0 ] ; then
 				((status = status | BRANCH_AHEAD))
@@ -394,7 +394,7 @@ function init_submodule {
 
 	if [ $((status & NOT_INITIALIZED)) -ne 0 ] ; then
 		if ! git submodule update --init --recursive . >/dev/null 2>&1 ; then
-			print_warning_msg "Can't run push on repository $repospath."
+			print_warning_msg "Failure on updating submodules of repository $repospath."
 		else
 			((status = status ^ (status & NOT_INITIALIZED) ))
 			((status = status | INITIALIZED))
@@ -421,7 +421,7 @@ function push_repos {
 
 	if [ $((status & BRANCH_AHEAD)) -ne 0 ] ; then
 		if ! git push >/dev/null 2>&1 ; then
-			print_warning_msg "Can't run push on repository $repospath."
+			print_warning_msg "Failure on pushing repository $repospath."
 		else
 			((status = status ^ (status & BRANCH_AHEAD) ))
 			((status = status | BRANCH_PUSHED))
