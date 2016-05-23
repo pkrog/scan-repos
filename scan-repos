@@ -19,6 +19,7 @@
 ((INITIALIZED           = 1 << 11)) # Submodule has been initialized.
 ((BRANCH_UPTODATE       = 1 << 12))
 ((GIT_FAILURE           = 1 << 13))
+((BRANCH_FETCHED        = 1 << 14))
 
 # Others
 ALL=all
@@ -298,7 +299,7 @@ function get_status_file {
 function scan_status {
 
 	local repos_status_file="$1"
-	local status=0
+	local status=$2
 
 	print_debug_msg 1 "Scanning repository status..."
 
@@ -345,19 +346,44 @@ function get_branch_name {
 function fetch_repos {
 
 	local repospath=$1
+	local status=$2
+	local fetch_output_file="$3"
 	local prevdir=$(pwd)
 	local args=
-	[ $DEBUG -eq 0 ] && args=--quiet
+	[ $DEBUG -eq 0 -a -z "$fetch_output_file" ] && args=--quiet
 	[ "$FETCH" = "$ALL" ] && args="$args --all"
 
 	cd $repospath
 	print_debug_msg 1 "Fetching $repospath ..."
 
-	if ! git fetch $args 2>/dev/null ; then
+	if ! git fetch $args >$fetch_output_file 2>&1 ; then
 		print_warning_msg "Failure on fetching repository $repospath."
+	else
+		((status = status | BRANCH_FETCHED))
 	fi
 
 	cd $prevdir
+
+	echo $status
+}
+
+#######################
+# GET FETCHED REMOTES #
+#######################
+
+function get_fetched_remotes {
+
+	local fetch_output_file="$1"
+	local fetched_remotes=""
+
+	print_debug_msg 1 "Getting fetched remotes..."
+
+	# Search for remotes inside fetch output
+	fetched_remotes=$(grep '.*->.*' "$fetch_output_file" | sed -e 's!^.* \([^ ]*\)$!\1!')
+
+	# Return fetched remotes
+	print_debug_msg 1 "Fetched remotes are \"$fetched_remotes\"."
+	echo "$fetched_remotes"
 }
 
 ##############
@@ -455,10 +481,15 @@ function print_status {
 	local repospath="$1"
 	local branch=$2
 	local status=$3
+	local fetched_remotes="$4"
 
 	local msg=
 
 	print_debug_msg 1 "Printing status $status of $repospath ..."
+
+	# Pre-actions
+	[ $((status & BRANCH_FETCHED)) -ne 0 -a "$FETCH" != "$ALL" ]   && msg="$msg, "$'\e[1;32m'"remote $fetched_remotes has been fetched"$'\e[0m'
+	[ $((status & BRANCH_FETCHED)) -ne 0 -a "$FETCH" = "$ALL" ]   && msg="$msg, "$'\e[1;32m'"remotes $fetched_remotes have been fetched"$'\e[0m'
 
 	# State
 	[ $((status & BRANCH_DIVERGED)) -ne 0 ]                 && msg="$msg, "$'\e[36m''branch has diverged'$'\e[0m'
@@ -474,8 +505,9 @@ function print_status {
 	[ -n "$DETACHED" -a $((status & DETACHED_HEAD)) -ne 0 ] && msg="$msg, "$'\e[31m''detached head'$'\e[0m'
 	[ -n "$TRACKING" -a $((status & (NOT_INITIALIZED | DETACHED_HEAD | BRANCH_BEHIND | BRANCH_AHEAD | BRANCH_UPTODATE))) -eq 0 ] && msg="$msg, "$'\e[31m''no tracking'$'\e[0m'
 
-	# Actions
+	# Post-actions
 	[ $((status & BRANCH_PULLED)) -ne 0 ]                       && msg="$msg, "$'\e[1;32m'"branch $branch has been pulled"$'\e[0m'
+		# TODO Branch has been pulled from which remote ?
 	[ $((status & BRANCH_PUSHED)) -ne 0 -a "$PUSH" != "$ALL" ]  && msg="$msg, "$'\e[1;34m'"branch $branch has been pushed"$'\e[0m'
 	[ $((status & BRANCH_PUSHED)) -ne 0 -a "$PUSH" = "$ALL" ]   && msg="$msg, "$'\e[1;34m'"all branches have been pushed"$'\e[0m'
 
@@ -498,13 +530,20 @@ function scan_all {
 	for rep in "${REPOS[@]}" ; do
 		print_progress_bar "Scanning" $i ${#REPOS[@]}
 
+		status=0
+
 		# Fetch
-		[ -n "$FETCH" ] && fetch_repos "$rep"
+		if [ -n "$FETCH" ] ; then
+			fetch_output_file=$(mktemp -t "scanrepos.fetch.XXXXXX") # TODO delete fetch_output_file?
+			status=$(fetch_repos "$rep" $status "$fetch_output_file")
+			fetched_remotes=$(get_fetched_remotes "$fetch_output_file")
+		fi
 
 		# Scan
 		status_file=$(get_status_file "$rep")
-		status=$(scan_status "$status_file")
+		status=$(scan_status "$status_file" $status)
 		branch=$(get_branch_name "$status_file")
+		# TODO delete status_file?
 
 		# Initialize submodule
 		if [ -n "$INIT" -a -n "$SUBMODULES" ] ; then
@@ -512,16 +551,12 @@ function scan_all {
 		fi
 
 		# Pull
-		if [ -n "$PULL" ] ; then
-			status=$(pull_repos "$rep" $status)
-		fi
+		[ -n "$PULL" ] && status=$(pull_repos "$rep" $status)
 
 		# Push
-		if [ -n "$PUSH" ] ; then
-			status=$(push_repos "$rep" $status)
-		fi
+		[ -n "$PUSH" ] && status=$(push_repos "$rep" $status)
 
-		print_status "$rep" "$branch" $status
+		print_status "$rep" "$branch" $status "$fetched_remotes"
 
 		i+=1
 	done

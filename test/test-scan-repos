@@ -244,7 +244,47 @@ function test_fetch {
 		run_git clone repos-orig repos-clone
 		modify_repos_file repos-orig a
 		run_scanrepos fetch $flag repos-clone || return 1
-		check_same fetch branch_behind || return 1
+	done
+}
+
+##################
+# TEST FETCH ALL #
+##################
+
+function test_fetch_all {
+
+	for flag in -F --fetch-all ; do
+		clean_repos
+
+		# Create repos
+		mk_repos repos-orig a
+
+		# Clone orig repos and bare repos as another remote
+		run_git clone repos-orig repos-clone
+		cd repos-clone
+		run_git remote add bare ../repos-bare
+		cd ..
+
+		# Modify orig repos and push modification into a new bare repos
+		modify_repos_file repos-orig a
+		mk_bare_repos repos-bare
+		cd repos-orig
+		run_git remote add origin ../repos-bare
+		run_git push -u origin master
+		cd ..
+
+		# Modify again orig repos
+		modify_repos_file repos-orig a
+
+		# Fetch all modifications from all remotes inside clone repos
+		check_scanrepos fetch_all $flag repos-clone || return 1
+
+		# Check that all remotes have been fetched
+		cd repos-clone
+		pulled_all=$(git log --graph --pretty=format:%d --all | tr '\n' ' ' | grep 'origin/master.*bare/master.*HEAD.*master')
+		[ -n "$pulled_all" ] || return 2
+		cd ..
+
 	done
 }
 
@@ -344,14 +384,16 @@ function test_push_all {
 		run_git commit -m "Add new file"
 		cd ..
 		
+		# TODO Test that when pushing normally, only the current branch is pushed.
+
 		# Push all branches
 		check_scanrepos push_all $flag repos-orig || return 1
 
 		# Check that all branches have been pushed 
 		cd repos-orig
-		master_branch_is_pushed=$(git log --pretty=format:%d | grep 'mater.*master')
+		master_branch_is_pushed=$(git log --pretty=format:%d | grep 'master.*master')
 		another_branch_is_pushed=$(git log --pretty=format:%d | grep 'another_branch.*another_branch')
-		[ -n "master_branch_is_pushed" -a -n "$another_branch_is_pushed" ] || return 2
+		[ -n "$master_branch_is_pushed" -a -n "$another_branch_is_pushed" ] || return 2
 		cd ..
 	done
 }
@@ -576,6 +618,7 @@ function test_branch_name {
 ########
 
 cd $SCRIPTDIR
+check test_fetch_all
 check test_push_all
 check test_branch_name
 check test_submodule_notinit
