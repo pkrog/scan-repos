@@ -20,6 +20,10 @@
 ((BRANCH_UPTODATE       = 1 << 12))
 ((GIT_FAILURE           = 1 << 13))
 
+# Others
+ALL=all
+YES=yes
+
 ####################
 # GLOBAL VARIABLES #
 ####################
@@ -49,9 +53,11 @@ function print_help {
 	echo
 	echo "Options:"
 	echo "   -a, --push         Push repositories whose current branch is ahead."
+	echo "   -A, --push-all     Push all branches of repositories."
 	echo "   -b, --pull         Pull repositories whose current branch is behind, and that have no modified files."
 	echo "   -d, --detached     Display repositories whose HEAD is detached."
-	echo "   -f, --fetch        Fetch repositories."
+	echo "   -f, --fetch        Fetch default remote of repositories."
+	echo "   -F, --fetch-all    Fetch all remotes of repositories."
 	echo "   -g, --debug        Debug mode."
 	echo "   -h, --help         Print this help message."
 	echo "   -i, --init         Initialize (and update) uninitialized submodules."
@@ -80,25 +86,29 @@ function error {
 
 function read_args {
 
+	local args="$*" # save arguments for debugging purpose
+	
 	# Read options
 	while true ; do
 		case $1 in
-			-a|--push)          PUSH=1 ;;
-			-b|--pull)          PULL=1 ;;
-			-d|--detached)      DETACHED=1 ;;
-			-f|--fetch)         FETCH=1 ;;
+			-a|--push)          PUSH=$YES ;;
+			-A|--push-all)      PUSH=$ALL ;;
+			-b|--pull)          PULL=$YES ;;
+			-d|--detached)      DETACHED=$YES ;;
+			-f|--fetch)         FETCH=$YES ;;
+			-F|--fetch-all)     FETCH=$ALL ;;
 			-g|--debug)         DEBUG=$((DEBUG + 1)) ;;
 			-h|--help)          print_help ; exit 0 ;;
-			-i|--init)          INIT=1 ;;
-			-n|--branchname)    BRANCHNAME=1 ;;
-			-p|--progress)      PROGRESS=1 ;;
-			-s|--submodules)    SUBMODULES=1 ;;
-			-t|--tracking)      TRACKING=1 ;;
+			-i|--init)          INIT=$YES ;;
+			-n|--branchname)    BRANCHNAME=$YES ;;
+			-p|--progress)      PROGRESS=$YES ;;
+			-s|--submodules)    SUBMODULES=$YES ;;
+			-t|--tracking)      TRACKING=$YES ;;
 			-) error "Illegal option $1." ;;
 			--) error "Illegal option $1." ;;
 			--*) error "Illegal option $1." ;;
 			-?) error "Unknown option $1." ;;
-			-[^-]*) split_opt=$(echo $1 | sed 's/^-//' | sed 's/\([a-z]\)/ -\1/g') ; set -- $1$split_opt "${@:2}" ;;
+			-[^-]*) split_opt=$(echo $1 | sed 's/^-//' | sed 's/\([a-zA-Z]\)/ -\1/g') ; set -- $1$split_opt "${@:2}" ;;
 			*) break
 		esac
 		shift
@@ -124,9 +134,11 @@ function read_args {
 	fi
 
 	# Debug
-	[ -n "$FETCH" ] && print_debug_msg 1 "Fetch enabled."
+	print_debug_msg 1 "Arguments are : $args"
+	print_debug_msg 1 "Repositories are : $REPOS"
+	[ -n "$FETCH" ] && print_debug_msg 1 "Fetch enabled with value \"$FETCH\"."
 	[ -n "$PULL" ] && print_debug_msg 1 "Pull enabled."
-	[ -n "$PUSH" ] && print_debug_msg 1 "Push enabled."
+	[ -n "$PUSH" ] && print_debug_msg 1 "Push enabled with value \"$PUSH\"."
 	[ -n "$DETACHED" ] && print_debug_msg 1 "Detached detection enabled."
 	[ -n "$PROGRESS" ] && print_debug_msg 1 "Progress bar enabled."
 	[ -n "$SUBMODULES" ] && print_debug_msg 1 "Submodules scanning enabled."
@@ -141,9 +153,7 @@ function print_debug_msg {
 	local dbglvl=$1
 	local dbgmsg=$2
 
-	if [ $DEBUG -ge $dbglvl ] ; then
-		echo [DEBUG] $dbgmsg >&2
-	fi
+	[ $DEBUG -ge $dbglvl ] && echo "[DEBUG] $dbgmsg" >&2
 }
 
 #####################
@@ -336,13 +346,14 @@ function fetch_repos {
 
 	local repospath=$1
 	local prevdir=$(pwd)
-	local quiet=--quiet
-	if [ $DEBUG -ge 1 ] ; then quiet= ; fi
+	local args=
+	[ $DEBUG -eq 0 ] && args=--quiet
+	[ "$FETCH" = "$ALL" ] && args="$args --all"
 
 	cd $repospath
 	print_debug_msg 1 "Fetching $repospath ..."
 
-	if ! git fetch --all $quiet 2>/dev/null ; then
+	if ! git fetch $args 2>/dev/null ; then
 		print_warning_msg "Failure on fetching repository $repospath."
 	fi
 
@@ -415,12 +426,14 @@ function push_repos {
 	local repospath="$1"
 	local status=$2
 	local prevdir=$(pwd)
+	local args=
+	[ "$PUSH" = "$ALL" ] && args=--all
 
 	cd "$repospath"
-	print_debug_msg 1 "Pushing $repospath ..."
+	print_debug_msg 1 "Pushing (PUSH=$PUSH) $repospath ..."
 
-	if [ $((status & BRANCH_AHEAD)) -ne 0 ] ; then
-		if ! git push >/dev/null 2>&1 ; then
+	if [ "$PUSH" = "$ALL" -o $((status & BRANCH_AHEAD)) -ne 0 ] ; then
+		if ! git push $args >/dev/null 2>&1 ; then
 			print_warning_msg "Failure on pushing repository $repospath."
 		else
 			((status = status ^ (status & BRANCH_AHEAD) ))
@@ -462,8 +475,9 @@ function print_status {
 	[ -n "$TRACKING" -a $((status & (NOT_INITIALIZED | DETACHED_HEAD | BRANCH_BEHIND | BRANCH_AHEAD | BRANCH_UPTODATE))) -eq 0 ] && msg="$msg, "$'\e[31m''no tracking'$'\e[0m'
 
 	# Actions
-	[ $((status & BRANCH_PULLED)) -ne 0 ]                   && msg="$msg, "$'\e[1;32m''branch has been pulled'$'\e[0m'
-	[ $((status & BRANCH_PUSHED)) -ne 0 ]                   && msg="$msg, "$'\e[1;34m''branch has been pushed'$'\e[0m'
+	[ $((status & BRANCH_PULLED)) -ne 0 ]                       && msg="$msg, "$'\e[1;32m'"branch $branch has been pulled"$'\e[0m'
+	[ $((status & BRANCH_PUSHED)) -ne 0 -a "$PUSH" != "$ALL" ]  && msg="$msg, "$'\e[1;34m'"branch $branch has been pushed"$'\e[0m'
+	[ $((status & BRANCH_PUSHED)) -ne 0 -a "$PUSH" = "$ALL" ]   && msg="$msg, "$'\e[1;34m'"all branches have been pushed"$'\e[0m'
 
 	# Display message
 	if [ -n "$msg" ] ; then

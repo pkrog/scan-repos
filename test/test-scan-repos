@@ -48,8 +48,18 @@ function check_same {
 	file1=$file1.output
 	file2=$file2.output.ref
 
+	# Check files existence
+	if [ ! -f "$file1" ] ; then
+		echo "Cannot find file \"$file1\"." >&2
+		return 1
+	fi
+	if [ ! -f "$file2" ] ; then
+		echo "Cannot find file \"$file2\"." >&2
+		return 1
+	fi
+
 	if ! diff $file1 $file2 >/dev/null ; then
-		echo "Files $file1 and $file2 are different."
+		echo "Files $file1 and $file2 are different." >&2
 		return 1
 	fi
 
@@ -302,9 +312,53 @@ function test_push_conflict {
 	done
 }
 
-######################
-# TEST PUSH CONFLICT #
-######################
+#################
+# TEST PUSH ALL #
+#################
+
+function test_push_all {
+
+	for flag in -A --push-all ; do
+
+		# Clean
+		clean_repos
+
+		# Create repos
+		mk_bare_repos repos-bare
+		mk_repos repos-orig a
+
+		# Push first time into bare repos
+		cd repos-orig
+		run_git remote add origin ../repos-bare
+		run_git push -u origin master
+		cd ..
+
+		# Modify file (new commit)
+		modify_repos_file repos-orig a
+
+		# Create another branch
+		cd repos-orig
+		run_git checkout -b another_branch
+		echo "ZAP" >b
+		run_git add .
+		run_git commit -m "Add new file"
+		cd ..
+		
+		# Push all branches
+		check_scanrepos push_all $flag repos-orig || return 1
+
+		# Check that all branches have been pushed 
+		cd repos-orig
+		master_branch_is_pushed=$(git log --pretty=format:%d | grep 'mater.*master')
+		another_branch_is_pushed=$(git log --pretty=format:%d | grep 'another_branch.*another_branch')
+		[ -n "master_branch_is_pushed" -a -n "$another_branch_is_pushed" ] || return 2
+		cd ..
+	done
+}
+
+#######################
+# TEST UNKNOWN OPTION #
+#######################
 
 function test_unknown_option {
 
@@ -522,6 +576,7 @@ function test_branch_name {
 ########
 
 cd $SCRIPTDIR
+check test_push_all
 check test_branch_name
 check test_submodule_notinit
 check test_tracking
