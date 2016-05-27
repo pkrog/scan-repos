@@ -488,8 +488,10 @@ function print_status {
 	print_debug_msg 1 "Printing status $status of $repospath ..."
 
 	# Pre-actions
-	[ $((status & BRANCH_FETCHED)) -ne 0 -a "$FETCH" != "$ALL" ]   && msg="$msg, "$'\e[1;32m'"remote $fetched_remotes has been fetched"$'\e[0m'
-	[ $((status & BRANCH_FETCHED)) -ne 0 -a "$FETCH" = "$ALL" ]   && msg="$msg, "$'\e[1;32m'"remotes $fetched_remotes have been fetched"$'\e[0m'
+	spaces=$(echo $fetched_remotes | sed -e 's/ //g')
+	nb_remotes=$(expr ${#spaces} + 1)
+	[ $((status & BRANCH_FETCHED)) -ne 0 -a $nb_remotes -eq 1 ]  && msg="$msg, "$'\e[1;32m'"remote $fetched_remotes has been fetched"$'\e[0m'
+	[ $((status & BRANCH_FETCHED)) -ne 0 -a $nb_remotes -gt 1 ]  && msg="$msg, "$'\e[1;32m'"remotes $fetched_remotes have been fetched"$'\e[0m'
 
 	# State
 	[ $((status & BRANCH_DIVERGED)) -ne 0 ]                 && msg="$msg, "$'\e[36m''branch has diverged'$'\e[0m'
