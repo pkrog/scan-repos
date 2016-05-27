@@ -187,7 +187,7 @@ function print_msg {
 
 function erase_progress_bar {
 	if [ -n "$PROGRESS" ] ; then
-		echo -n $'\r'"                                                            "$'\r'
+		echo -n $'\r'"                                                            "$'\r' >&2
 	fi
 }
 
@@ -217,19 +217,19 @@ function print_progress_bar {
 			fi
 		done
 
-		echo -n $'\r'
+		echo -n $'\r' >&2
 		if [ -n "$title" ] ; then
-			echo -n "$title "
+			echo -n "$title " >&2
 		fi
-		echo -n "[$bar] ($percent%)"
+		echo -n "[$bar] ($percent%)" >&2
 		if [ $done -ge $total ] ; then
 			if [ -n "$keepbar" ] ; then
-				echo
+				echo >&2
 			else
 				erase_progress_bar
 			fi
 		else
-			echo -n $'\r'
+			echo -n $'\r' >&2
 		fi
 	fi
 }
@@ -299,7 +299,7 @@ function get_status_file {
 function scan_status {
 
 	local repos_status_file="$1"
-	local status=$2
+	local status="$2"
 
 	print_debug_msg 1 "Scanning repository status..."
 
@@ -317,7 +317,7 @@ function scan_status {
 
 	# Return status
 	print_debug_msg 1 "Status = $status."
-	echo $status
+	echo "$status"
 }
 
 ###################
@@ -345,8 +345,8 @@ function get_branch_name {
 
 function fetch_repos {
 
-	local repospath=$1
-	local status=$2
+	local repospath="$1"
+	local status="$2"
 	local fetch_output_file="$3"
 	local prevdir=$(pwd)
 	local args=
@@ -364,7 +364,7 @@ function fetch_repos {
 
 	cd $prevdir
 
-	echo $status
+	echo "$status"
 }
 
 #######################
@@ -393,7 +393,7 @@ function get_fetched_remotes {
 function pull_repos {
 
 	local repospath="$1"
-	local status=$2
+	local status="$2"
 	local prevdir=$(pwd)
 
 	cd "$repospath"
@@ -413,7 +413,7 @@ function pull_repos {
 
 	cd $prevdir
 
-	echo $status
+	echo "$status"
 }
 
 ########################
@@ -423,7 +423,7 @@ function pull_repos {
 function init_submodule {
 
 	local repospath="$1"
-	local status=$2
+	local status="$2"
 	local prevdir=$(pwd)
 
 	cd "$repospath"
@@ -440,7 +440,7 @@ function init_submodule {
 
 	cd $prevdir
 
-	echo $status
+	echo "$status"
 }
 
 ##############
@@ -450,7 +450,7 @@ function init_submodule {
 function push_repos {
 
 	local repospath="$1"
-	local status=$2
+	local status="$2"
 	local prevdir=$(pwd)
 	local args=
 	[ "$PUSH" = "$ALL" ] && args=--all
@@ -469,7 +469,7 @@ function push_repos {
 
 	cd $prevdir
 
-	echo $status
+	echo "$status"
 }
 
 ################
@@ -479,8 +479,8 @@ function push_repos {
 function print_status {
 
 	local repospath="$1"
-	local branch=$2
-	local status=$3
+	local branch="$2"
+	local status="$3"
 	local fetched_remotes="$4"
 
 	local msg=
@@ -530,33 +530,31 @@ function scan_all {
 	for rep in "${REPOS[@]}" ; do
 		print_progress_bar "Scanning" $i ${#REPOS[@]}
 
-		status=0
+		local status=0
 
 		# Fetch
 		if [ -n "$FETCH" ] ; then
 			fetch_output_file=$(mktemp -t "scanrepos.fetch.XXXXXX") # TODO delete fetch_output_file?
-			status=$(fetch_repos "$rep" $status "$fetch_output_file")
+			status=$(fetch_repos "$rep" "$status" "$fetch_output_file")
 			fetched_remotes=$(get_fetched_remotes "$fetch_output_file")
 		fi
 
 		# Scan
 		status_file=$(get_status_file "$rep")
-		status=$(scan_status "$status_file" $status)
+		status=$(scan_status "$status_file" "$status")
 		branch=$(get_branch_name "$status_file")
 		# TODO delete status_file?
 
 		# Initialize submodule
-		if [ -n "$INIT" -a -n "$SUBMODULES" ] ; then
-			status=$(init_submodule "$rep" $status)
-		fi
+		[ -n "$INIT" -a -n "$SUBMODULES" ] && status=$(init_submodule "$rep" "$status")
 
 		# Pull
-		[ -n "$PULL" ] && status=$(pull_repos "$rep" $status)
+		[ -n "$PULL" ] && status=$(pull_repos "$rep" "$status")
 
 		# Push
-		[ -n "$PUSH" ] && status=$(push_repos "$rep" $status)
+		[ -n "$PUSH" ] && status=$(push_repos "$rep" "$status")
 
-		print_status "$rep" "$branch" $status "$fetched_remotes"
+		print_status "$rep" "$branch" "$status" "$fetched_remotes"
 
 		i+=1
 	done
