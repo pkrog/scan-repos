@@ -8,6 +8,11 @@ You can run `scan-repos` using a specified Git directory, or specify a directory
 INSTALLING
 ----------
 
+First, you should run the tests in order to make sure all is fine:
+```bash
+make test
+```
+
 You can use `scan-repos` script as is, or install it in `PATH` using `make`.
 
 By default, `scan-repos` is installed inside `/usr/local/bin`. If this is what you want, just run:
