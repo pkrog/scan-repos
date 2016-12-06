@@ -1,17 +1,16 @@
 #!/bin/bash
+# vi: fdm=marker
 
-#############
-# CONSTANTS #
-#############
+# CONSTANTS {{{1
+################################################################
 
-ORIGWD=$(pwd)
 SCRIPTDIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
 SCANREPOS=$SCRIPTDIR/../scan-repos
 
-#########
-# CHECK #
-#########
+# RUNNING TESTS AND SCANREPOS {{{1
+################################################################
 
+# Check. Runs test function and checks returned code. {{{2
 function check {
 
 	local testfct=$1
@@ -32,11 +31,7 @@ function check {
 	echo success. 
 }
 
-##############
-# CHECK SAME #
-##############
-
-# Checks that two files have the same containt
+# Check same. Checks that two files have the same containt {{{2
 function check_same {
 
 	local file1=$1
@@ -66,10 +61,7 @@ function check_same {
 	return 0
 }
 
-##################
-# RUN SCAN-REPOS #
-##################
-
+# Run scanrepos {{{2
 function run_scanrepos {
 
 	local output_filename=$1
@@ -78,11 +70,7 @@ function run_scanrepos {
 	$SCANREPOS "$@" >$output_filename.output 2>&1
 }
 
-####################
-# CHECK SCAN-REPOS #
-####################
-
-# Run scan-repos and then check output files
+# Check scanrepos output. {{{2
 function check_scanrepos {
 
 	local output_filename=$1
@@ -91,27 +79,21 @@ function check_scanrepos {
 	check_same $output_filename
 }
 
-###########
-# RUN GIT #
-###########
+# RUNNING GIT {{{1
+################################################################
 
+# Run git {{{2
 function run_git {
 	git "$@" >/dev/null 2>&1
 }
 
-###############
-# CLEAN REPOS #
-###############
-
+# Clean repos {{{2
 function clean_repos {
 	rm -rf repos-*
 }
 
 
-###################
-# MAKE BARE REPOS #
-###################
-
+# Make bare repos {{{2
 function mk_bare_repos {
 
 	local repos=$1
@@ -122,10 +104,7 @@ function mk_bare_repos {
 	cd ..
 }
 
-##############
-# MAKE REPOS #
-##############
-
+# Make repos {{{2
 function mk_repos {
 
 	local repos="$1"
@@ -140,10 +119,7 @@ function mk_repos {
 	cd ..
 }
 
-#####################
-# MODIFY REPOS FILE #
-#####################
-
+# Modify repos file {{{2
 function modify_repos_file {
 
 	local repos=$1
@@ -156,10 +132,7 @@ function modify_repos_file {
 	cd ..
 }
 
-#####################
-# DELETE REPOS FILE #
-#####################
-
+# Delete repos file {{{2
 function delete_repos_file {
 
 	local repos=$1
@@ -172,9 +145,8 @@ function delete_repos_file {
 	cd ..
 }
 
-######################
-# TEST MODIFIED FILE #
-######################
+# TEST MODIFIED FILE {{{1
+################################################################
 
 function test_modified_file {
 	clean_repos
@@ -183,9 +155,8 @@ function test_modified_file {
 	check_scanrepos modified_file repos-a || return 1
 }
 
-#####################
-# TEST DELETED FILE #
-#####################
+# TEST DELETED FILE {{{1
+################################################################
 
 function test_deleted_file {
 	clean_repos
@@ -194,9 +165,8 @@ function test_deleted_file {
 	check_scanrepos deleted_file repos-a || return 1
 }
 
-#######################
-# TEST UNTRACKED FILE #
-#######################
+# TEST UNTRACKED FILE {{{1
+################################################################
 
 function test_untracked_file {
 	clean_repos
@@ -205,9 +175,8 @@ function test_untracked_file {
 	check_scanrepos untracked_file repos-a || return 1
 }
 
-#####################
-# TEST BRANCH AHEAD #
-#####################
+# TEST BRANCH AHEAD {{{1
+################################################################
 
 function test_branch_ahead {
 	clean_repos
@@ -217,9 +186,8 @@ function test_branch_ahead {
 	check_scanrepos branch_ahead repos-clone || return 1
 }
 
-######################
-# TEST BRANCH BEHIND #
-######################
+# TEST BRANCH BEHIND {{{1
+################################################################
 
 function test_branch_behind {
 	clean_repos
@@ -232,9 +200,8 @@ function test_branch_behind {
 	check_scanrepos branch_behind repos-clone || return 1
 }
 
-##############
-# TEST FETCH #
-##############
+# TEST FETCH {{{1
+################################################################
 
 function test_fetch {
 
@@ -247,9 +214,8 @@ function test_fetch {
 	done
 }
 
-##################
-# TEST FETCH ALL #
-##################
+# TEST FETCH ALL {{{1
+################################################################
 
 function test_fetch_all {
 
@@ -288,9 +254,8 @@ function test_fetch_all {
 	done
 }
 
-#############
-# TEST PULL #
-#############
+# TEST PULL {{{1
+################################################################
 
 function test_pull {
 
@@ -303,9 +268,8 @@ function test_pull {
 	done
 }
 
-#############
-# TEST PUSH #
-#############
+# TEST PUSH {{{1
+################################################################
 
 function test_push {
 
@@ -322,9 +286,8 @@ function test_push {
 	done
 }
 
-######################
-# TEST PUSH CONFLICT #
-######################
+# TEST PUSH CONFLICT {{{1
+################################################################
 
 function test_push_conflict {
 
@@ -352,9 +315,8 @@ function test_push_conflict {
 	done
 }
 
-#################
-# TEST PUSH ALL #
-#################
+# TEST PUSH ALL {{{1
+################################################################
 
 function test_push_all {
 
@@ -398,9 +360,8 @@ function test_push_all {
 	done
 }
 
-#######################
-# TEST UNKNOWN OPTION #
-#######################
+# TEST UNKNOWN OPTION {{{1
+################################################################
 
 function test_unknown_option {
 
@@ -408,9 +369,8 @@ function test_unknown_option {
 	check_same unknown_option || return 1
 }
 
-##################
-# TEST REPOSPATH #
-##################
+# TEST REPOSPATH {{{1
+################################################################
 
 function test_repospath {
 
@@ -456,9 +416,8 @@ function test_repospath {
 	check_same repospath_inside_envvarunset repospath_inside || return 1
 }
 
-#############################
-# TEST MULTIPLE REPOS PATHS #
-#############################
+# TEST MULTIPLE REPOS PATHS {{{1
+################################################################
 
 function test_multiple_repospaths {
 
@@ -479,9 +438,8 @@ function test_multiple_repospaths {
 	REPOSPATH= check_scanrepos multiple_repospaths_curdir  || return 1
 }
 
-##############
-# TEST SPACE #
-##############
+# TEST SPACE {{{1
+################################################################
 
 function test_space {
 
@@ -499,9 +457,8 @@ function test_space {
 	check_scanrepos space_2_repos "repos- a" repos-a  || return 1
 }
 
-###################
-# TEST SUBMODULES #
-###################
+# TEST SUBMODULES {{{1
+################################################################
 
 function test_submodules {
 
@@ -527,9 +484,8 @@ function test_submodules {
 	check_scanrepos submodules_detached -sd repos-clone-b || return 1       # detect detached head
 }
 
-#############################
-# TEST RECURSIVE SUBMODULES #
-#############################
+# TEST RECURSIVE SUBMODULES {{{1
+################################################################
 
 function test_recursive_submodules {
 
@@ -559,9 +515,8 @@ function test_recursive_submodules {
 	check_scanrepos submodules_recursive_detached -sd repos-clone-a || return 1       # detect detached head
 }
 
-##########################
-# TEST SUBMODULE NOTINIT #
-##########################
+# TEST SUBMODULE NOTINIT {{{1
+################################################################
 
 function test_submodule_notinit {
 
@@ -578,9 +533,8 @@ function test_submodule_notinit {
 	check_scanrepos submodule_notinit -s repos-clone-b || return 1
 }
 
-#################
-# TEST TRACKING #
-#################
+# TEST TRACKING {{{1
+################################################################
 
 function test_tracking {
 
@@ -602,9 +556,8 @@ function test_tracking {
 	check_scanrepos no_tracking_detached_head -std repos-clone-b || return 1
 }
 
-####################
-# TEST BRANCH NAME #
-####################
+# TEST BRANCH NAME {{{1
+################################################################
 
 function test_branch_name {
 	clean_repos
@@ -613,9 +566,8 @@ function test_branch_name {
 	check_scanrepos branch_name -n repos-a || return 1
 }
 
-#####################
-# TEST VERSION {{{1 #
-#####################
+# TEST VERSION {{{1
+################################################################
 
 function test_version {
 
@@ -627,9 +579,8 @@ function test_version {
 	done
 }
 
-#############
-# MAIN {{{1 #
-#############
+# MAIN {{{1
+################################################################
 
 cd $SCRIPTDIR
 check test_fetch_all
