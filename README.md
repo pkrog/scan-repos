@@ -8,27 +8,19 @@ You can run `scan-repos` using a specified Git directory, or specify a directory
 INSTALLING
 ----------
 
-You can use `scan-repos` script as is, or install it using *autoconf*.
+You can use `scan-repos` script as is, or install it in `PATH` using `make`.
 
-First run the *autoconf* tools:
-``` {.bash}
-aclocal
-automake --add-missing
-autoconf
-./configure
-```
-
-Then run the tests:
-``` {.bash}
-make check
-```
-
-Finally install:
+By default, `scan-repos` is installed inside `/usr/local/bin`. If this is what you want, just run:
 ``` {.bash}
 make install
 ```
 
-For uninstalling:
+If you want to install it in a different place:
+``` {.bash}
+PREFIX=/usr/bin make install
+```
+
+To uninstall it:
 ``` {.bash}
 make uninstall
 ```

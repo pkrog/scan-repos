@@ -1,13 +1,2 @@
-Makefile
 .*.swp
 *~
-*.log
-configure
-install-sh
-missing
-autom4te.cache
-aclocal.m4
-Makefile.in
-config.status
-test-driver
-*.trs
