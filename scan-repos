@@ -381,6 +381,32 @@ function get_branches_without_upstream {
 	echo "$branches"
 }
 
+# Set upstream {{{1
+################################################################
+
+function set_upstream {
+
+	local repospath="$1"
+	local branches_without_upstream="$2"
+	local prevdir=$(pwd)
+
+	# Enter repository's directory
+	cd "$repospath"
+
+	# Loop on all branches that have no upstream set
+	local branches_failure=
+	for branch in $branches_without_upstream ; do
+		if ! git branch --set-upstream-to=origin/$branch $branch >/dev/null ; then
+			branches_failure="$branches_failure $branch"
+		fi
+	done
+
+	# Go back to previous directory
+	cd $prevdir
+
+	echo "$branches_failure"
+}
+
 # GET BRANCH NAME {{{1
 ################################################################
 
@@ -617,11 +643,17 @@ function scan_all {
 		[ -n "$INIT" -a -n "$SUBMODULES" ] && status=$(init_submodule "$rep" "$status")
 
 		# Check upstreams
-		if [ -n "$UPSTREAM" ] ; then
+		if [ -n "$UPSTREAM" -o -n "$SETUPSTREAM" ] ; then
 			branch_info_file=$(get_branch_info_file "$rep")
 			status=$(scan_branch_info "$branch_info_file" "$status")
 			branches_without_upstream=$(get_branches_without_upstream "$branch_info_file")
 			rm -f $branch_info_file
+		fi
+
+		# Set upstream
+		if [ -n "$SETUPSTREAM" -a $((status & BRANCH_NOUPSTREAM)) -ne 0 ] ; then
+			branches_without_upstream=$(set_upstream "$rep" "$branches_without_upstream")
+			[ -z "$branches_without_upstream" ] && ((status = status ^ (status & BRANCH_NOUPSTREAM) ))
 		fi
 
 		# Pull
