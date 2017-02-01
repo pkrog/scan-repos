@@ -485,7 +485,7 @@ function pull_repos {
 	if [ $((status & (BRANCH_BEHIND | BRANCH_DIVERGED) )) -ne 0 -a $((status & (MODIFIED_FILES | DELETED_FILES))) -eq 0 ] ; then
 
 		# Pull
-		if ! git pull 2>$pull_log_file >/dev/null ; then
+		if ! git pull 2>&1 >/dev/null ; then
 			print_warning_msg "Failure on pulling repository $repospath."
 		else
 			if [ $((status & BRANCH_DIVERGED)) -ne 0 ] ; then
