@@ -4,7 +4,7 @@
 # CONSTANTS {{{1
 ################################################################
 
-VERSION=1.1
+VERSION=1.2.0
 
 # State constants
 ((BRANCH_AHEAD          = 1 << 0))
