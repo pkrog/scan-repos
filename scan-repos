@@ -22,6 +22,7 @@ VERSION=1.1
 ((BRANCH_UPTODATE       = 1 << 12))
 ((GIT_FAILURE           = 1 << 13))
 ((BRANCH_FETCHED        = 1 << 14))
+((BRANCH_NOUPSTREAM     = 1 << 15))
 
 # Others
 ALL=all
@@ -40,6 +41,8 @@ DETACHED=
 INIT=
 TRACKING=
 BRANCHNAME=
+UPSTREAM=
+SETUPSTREAM=
 
 declare -a REPOS
 
@@ -53,20 +56,23 @@ function print_help {
 	echo "If no repositories are specified, then the value of the environment variable REPOSPATH is used if it is set. Otherwise the current directory is used."
 	echo
 	echo "Options:"
-	echo "   -a, --push         Push repositories whose current branch is ahead."
-	echo "   -A, --push-all     Push all branches of repositories."
-	echo "   -b, --pull         Pull repositories whose current branch is behind, and that have no modified files."
-	echo "   -d, --detached     Display repositories whose HEAD is detached."
-	echo "   -f, --fetch        Fetch default remote of repositories."
-	echo "   -F, --fetch-all    Fetch all remotes of repositories."
-	echo "   -g, --debug        Debug mode."
-	echo "   -h, --help         Print this help message."
-	echo "   -i, --init         Initialize (and update) uninitialized submodules."
-	echo "   -n, --branchname   Display current branch name."
-	echo "   -p, --progress     Display progress bar."
-	echo "   -s, --submodules   Check also the states of submodules."
-	echo "   -t, --tracking     Detect branches that do not track a remote branch."
-	echo "   -v, --version      Print version."
+	echo "   -a, --push           Push repositories whose current branch is ahead."
+	echo "   -A, --push-all       Push all branches of repositories."
+	echo "   -b, --pull           Pull repositories whose current branch is behind, and that have no modified files."
+	echo "   -d, --detached       Display repositories whose HEAD is detached."
+	echo "   -f, --fetch          Fetch default remote of repositories."
+	echo "   -F, --fetch-all      Fetch all remotes of repositories."
+	echo "   -g, --debug          Debug mode."
+	echo "   -h, --help           Print this help message."
+	echo "   -i, --init           Initialize (and update) uninitialized submodules."
+	echo "   -n, --branchname     Display current branch name."
+	echo "   -p, --progress       Display progress bar."
+	echo "   -s, --submodules     Check also the states of submodules."
+	echo "   -t, --tracking       Detect branches that do not track a remote branch."
+	echo "   -u, --upstream       Check if some branches have no upstream."
+	echo "   -U, --set-upstream   Set upstream to origin/<branch> for each branch having none."
+	echo "   -v, --version        Print version."
+	echo "   -z                   Shortcut for -psFbu."
 }
 
 # ERROR {{{1
@@ -104,7 +110,10 @@ function read_args {
 			-p|--progress)      PROGRESS=$YES ;;
 			-s|--submodules)    SUBMODULES=$YES ;;
 			-t|--tracking)      TRACKING=$YES ;;
+			-u|--upstream)      UPSTREAM=$YES ;;
+			-U|--set-upstream)  SETUPSTREAM=$YES ;;
 			-v|--version)       echo $VERSION ; exit 0 ;;
+			-z)                 set -- -psFbu "${@:2}" ;;
 			-) error "Illegal option $1." ;;
 			--) error "Illegal option $1." ;;
 			--*) error "Illegal option $1." ;;
@@ -285,6 +294,33 @@ function get_status_file {
 	echo $repos_status_file
 }
 
+# Get branch info file {{{1
+################################################################
+
+function get_branch_info_file {
+
+	local repospath="$1"
+	local repos_branch_info_file=$(mktemp -t "scanrepos.branch_info.XXXXXX")
+	local prevdir=$(pwd)
+
+	# Enter repository's directory
+	cd "$repospath"
+
+	# Get branch info
+	print_debug_msg 1 "Getting repository \"$repospath\" branch info..."
+	if ! git branch -vv >$repos_branch_info_file ; then
+		echo GIT FAILURE >$repos_branch_info_file
+		print_warning_msg "Failure on getting branch info of repository $repospath."
+	fi
+
+	# Go back to previous directory
+	cd $prevdir
+
+	# Return branch_info filename
+	print_debug_msg 1 "Repository \"$repospath\" branch info file is \"$repos_branch_info_file\"."
+	echo $repos_branch_info_file
+}
+
 # SCAN STATUS {{{1
 ################################################################
 
@@ -310,6 +346,39 @@ function scan_status {
 	# Return status
 	print_debug_msg 1 "Status = $status."
 	echo "$status"
+}
+
+# Scan branch info {{{1
+################################################################
+
+function scan_branch_info {
+
+	local repos_branch_info_file="$1"
+	local status="$2"
+
+	print_debug_msg 1 "Scanning repository branch info..."
+
+	noupstream=$(grep -v '(HEAD' "$repos_branch_info_file" | grep -v '\[')
+	[ -n "$noupstream" ] && ((status = status | BRANCH_NOUPSTREAM))
+
+	# Return status
+	print_debug_msg 1 "Status = $status."
+	echo "$status"
+}
+
+# Get branches without upstream {{{1
+################################################################
+
+function get_branches_without_upstream {
+
+	local repos_branch_info_file="$1"
+	local branches=
+
+	grep -v '(HEAD' "$repos_branch_info_file" | grep -v '\[' | sed -e 's/^[ *]*\([^ ]*\).*$/\1/'
+
+	# Return branches
+	print_debug_msg 1 "Branches without upstream = $branches."
+	echo "$branches"
 }
 
 # GET BRANCH NAME {{{1
@@ -388,7 +457,9 @@ function pull_repos {
 	print_debug_msg 1 "Pulling $repospath ..."
 
 	if [ $((status & (BRANCH_BEHIND | BRANCH_DIVERGED) )) -ne 0 -a $((status & (MODIFIED_FILES | DELETED_FILES))) -eq 0 ] ; then
-		if ! git pull >/dev/null ; then
+
+		# Pull
+		if ! git pull 2>$pull_log_file >/dev/null ; then
 			print_warning_msg "Failure on pulling repository $repospath."
 		else
 			if [ $((status & BRANCH_DIVERGED)) -ne 0 ] ; then
@@ -467,6 +538,7 @@ function print_status {
 	local branch="$2"
 	local status="$3"
 	local fetched_remotes="$4"
+	local branches_without_upstream="$5"
 
 	local msg=
 
@@ -476,10 +548,18 @@ function print_status {
 	if [ -n "$fetched_remotes" ] ; then
 		spaces=$(echo $fetched_remotes | sed -e 's/ //g')
 		nb_remotes=$(expr ${#spaces} + 1)
-		[ $((status & BRANCH_FETCHED)) -ne 0 -a $nb_remotes -eq 1 ]  && msg="$msg, "$'\e[1;32m'"remote $fetched_remotes has been fetched"$'\e[0m'
-		[ $((status & BRANCH_FETCHED)) -ne 0 -a $nb_remotes -gt 1 ]  && msg="$msg, "$'\e[1;32m'"remotes $fetched_remotes have been fetched"$'\e[0m'
+		[ $((status & BRANCH_FETCHED)) -ne 0 -a $nb_remotes -eq 1 ] && msg="$msg, "$'\e[1;32m'"remote $fetched_remotes has been fetched"$'\e[0m'
+		[ $((status & BRANCH_FETCHED)) -ne 0 -a $nb_remotes -gt 1 ] && msg="$msg, "$'\e[1;32m'"remotes $fetched_remotes have been fetched"$'\e[0m'
 	fi
 
+	# Branches without uptsream (i.e.: "no tracking information")
+	if [ -n "$branches_without_upstream" ] ; then
+		spaces=$(echo $branches_without_upstream | sed -e 's/ //g')
+		nb_branches=$(expr ${#spaces} + 1)
+		[ $((status & BRANCH_NOUPSTREAM)) -ne 0 -a $nb_branches -eq 1 ] && msg="$msg, "$'\e[1;31m'"branche $branches_without_upstream has no upstream"$'\e[0m'
+		[ $((status & BRANCH_NOUPSTREAM)) -ne 0 -a $nb_branches -gt 1 ] && msg="$msg, "$'\e[1;31m'"branches $branches_without_upstream have no upstreams"$'\e[0m'
+	fi
+	
 	# State
 	[ $((status & BRANCH_DIVERGED)) -ne 0 ]                 && msg="$msg, "$'\e[36m''branch has diverged'$'\e[0m'
 	[ $((status & BRANCH_BEHIND)) -ne 0 ]                   && msg="$msg, "$'\e[32m''branch is behind'$'\e[0m'
@@ -536,13 +616,21 @@ function scan_all {
 		# Initialize submodule
 		[ -n "$INIT" -a -n "$SUBMODULES" ] && status=$(init_submodule "$rep" "$status")
 
+		# Check upstreams
+		if [ -n "$UPSTREAM" ] ; then
+			branch_info_file=$(get_branch_info_file "$rep")
+			status=$(scan_branch_info "$branch_info_file" "$status")
+			branches_without_upstream=$(get_branches_without_upstream "$branch_info_file")
+			rm -f $branch_info_file
+		fi
+
 		# Pull
 		[ -n "$PULL" ] && status=$(pull_repos "$rep" "$status")
 
 		# Push
 		[ -n "$PUSH" ] && status=$(push_repos "$rep" "$status")
 
-		print_status "$rep" "$branch" "$status" "$fetched_remotes"
+		print_status "$rep" "$branch" "$status" "$fetched_remotes" "$branches_without_upstream"
 
 		i+=1
 	done
