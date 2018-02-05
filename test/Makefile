@@ -1,5 +1,6 @@
 all:
-	./test-scan-repos
+	./test-scan-repos-old-style
+	../bash-testthat/testthat.sh test-scan-repos.sh
 
 clean:
 	$(RM) -r repos-*

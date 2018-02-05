@@ -566,18 +566,6 @@ function test_branch_name {
 	check_scanrepos branch_name -n repos-a || return 1
 }
 
-# TEST VERSION {{{1
-################################################################
-
-function test_version {
-
-	for arg in -v --version ; do
-		version=$($SCANREPOS $arg)
-		[ $? -eq 0 ] || return 1
-		version=$(echo $version | grep '^[0-9]\+\.[0-9]\+$')
-		[ -n "$version" ] || return 1
-	done
-}
 
 # MAIN {{{1
 ################################################################
@@ -603,5 +591,4 @@ check test_branch_behind
 check test_fetch
 check test_multiple_repospaths
 check test_space
-check test_version
 cd $ORIGWD
