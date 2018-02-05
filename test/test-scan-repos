@@ -365,7 +365,7 @@ function test_push_all {
 
 function test_unknown_option {
 
-	! run_scanrepos unknown_option -z || return 1
+	! run_scanrepos unknown_option -X || return 1
 	check_same unknown_option || return 1
 }
 
