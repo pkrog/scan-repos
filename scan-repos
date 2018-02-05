@@ -27,6 +27,7 @@ VERSION=1.2.1
 # Others
 ALL=all
 YES=yes
+Z_SHORTCUT=pFbuU
 
 # GLOBAL VARIABLES {{{1
 ################################################################
@@ -72,7 +73,7 @@ function print_help {
 	echo "   -u, --upstream       Check if some branches have no upstream."
 	echo "   -U, --set-upstream   Set upstream to origin/<branch> for each branch having none."
 	echo "   -v, --version        Print version."
-	echo "   -z                   Shortcut for -psFbu."
+	echo "   -z                   Shortcut for -$Z_SHORTCUT."
 }
 
 # ERROR {{{1
@@ -113,7 +114,7 @@ function read_args {
 			-u|--upstream)      UPSTREAM=$YES ;;
 			-U|--set-upstream)  SETUPSTREAM=$YES ;;
 			-v|--version)       echo $VERSION ; exit 0 ;;
-			-z)                 set -- $1 -psFbu "${@:2}" ;;
+			-z)                 set -- $1 -$Z_SHORTCUT "${@:2}" ;;
 			-) error "Illegal option $1." ;;
 			--) error "Illegal option $1." ;;
 			--*) error "Illegal option $1." ;;
