@@ -124,7 +124,6 @@ function read_args {
 		esac
 		shift
 	done
-	shift $((OPTIND - 1))
 
 	# Read remaining arguments as a list of repositories
 	if [ -n "$*" ] ; then
