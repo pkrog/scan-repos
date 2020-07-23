@@ -1,4 +1,6 @@
+ifeq ($(PREFIX),)
 PREFIX=/usr/local/bin
+endif
 SCANREPOS=scan-repos
 INSTALLED_SCANREPOS=$(shell which $(SCANREPOS))
 ifneq ($(INSTALLED_SCANREPOS),)
