@@ -626,6 +626,10 @@ function scan_all {
 
 		local status=0
 
+		# Check if default repos is reachable
+		# TODO
+		# NOTE But what if FETCH_ALL is on?
+
 		# Fetch
 		if [ -n "$FETCH" ] ; then
 			fetch_output_file=$(mktemp -t "scanrepos.fetch.XXXXXX") # TODO delete fetch_output_file?
@@ -702,7 +706,7 @@ read_args "$@"
 resolve_repos_paths
 
 # List submodules
-[ -n "$SUBMODULES" ] &&	list_submodules
+[ -n "$SUBMODULES" ] && list_submodules
 
 # Scan
 scan_all
