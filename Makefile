@@ -1,5 +1,5 @@
 ifeq ($(PREFIX),)
-PREFIX=/usr/local/bin
+PREFIX=$(HOME)/.local/bin
 endif
 SCANREPOS=scan-repos
 INSTALLED_SCANREPOS=$(shell which $(SCANREPOS))
@@ -12,7 +12,7 @@ endif
 
 all:
 
-install:
+install: $(PREFIX)
 	$(if $(DIFF_CONTAINTS),$(error "Scan-repos is already installed with the same version number ($(VERSION_INSTALLED)), but containts are different. Consider increasing the version number before installing."))
 	$(if $(SAME_VERSION_NUMBER),$(info The exact same version of $(SCANREPOS) is already installed.))
 	$(if $(SAME_VERSION_NUMBER),,$(if $(INSTALLED_SCANREPOS),$(info Replacing currently installed version $(VERSION_INSTALLED) by version $(CURRENT_VERSION).)))
@@ -24,6 +24,9 @@ ifneq ($(INSTALLED_SCANREPOS),)
 else
 	@echo "Scan-repos is not installed."
 endif
+
+$(PREFIX):
+	mkdir -p "$@"
 
 test:
 	$(MAKE) -C $@
