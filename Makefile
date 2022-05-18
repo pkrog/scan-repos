@@ -2,7 +2,7 @@ ifeq ($(PREFIX),)
 PREFIX=$(HOME)/.local/bin
 endif
 SCANREPOS=scan-repos
-INSTALLED_SCANREPOS=$(shell command -v $(SCANREPOS))
+INSTALLED_SCANREPOS=$(shell bash -c "command -v $(SCANREPOS)")
 ifneq ($(INSTALLED_SCANREPOS),)
 CURRENT_VERSION=$(shell ./$(SCANREPOS) -v)
 VERSION_INSTALLED=$(shell $(INSTALLED_SCANREPOS) -v)
